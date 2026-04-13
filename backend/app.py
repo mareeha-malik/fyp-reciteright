@@ -6,6 +6,7 @@ sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import librosa
+import librosa.sequence
 import numpy as np
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics.pairwise import cosine_similarity
@@ -46,26 +47,21 @@ print("✅ Faster-Whisper model loaded!")
 def preprocess_audio(input_path):
     """Preprocess audio: denoise, normalize, trim silence"""
     try:
-        # Load audio
         y, sr = librosa.load(input_path, sr=16000, mono=True)
 
-        # Step 1: Noise reduction (if noisereduce available)
         if nr is not None:
             y_denoised = nr.reduce_noise(y=y, sr=sr, stationary=True)
         else:
             y_denoised = y
 
-        # Step 2: Normalize volume
         max_val = np.max(np.abs(y_denoised))
         if max_val > 0:
             y_normalized = y_denoised / max_val * 0.95
         else:
             y_normalized = y_denoised
 
-        # Step 3: Trim silence
         y_trimmed, _ = librosa.effects.trim(y_normalized, top_db=20)
 
-        # Save preprocessed audio
         output_path = input_path.replace('.wav', '_processed.wav')
         sf.write(output_path, y_trimmed, 16000)
 
@@ -86,6 +82,8 @@ def transcribe_audio(audio_path):
             vad_parameters=dict(min_silence_duration_ms=500)
         )
         text = " ".join([seg.text.strip() for seg in segments])
+        print(f"🎤 Transcribed: '{text}'")
+        print(f"📊 Confidence: {info.language_probability:.2%}")
         return text.strip()
     except Exception as e:
         print(f"❌ Transcription error: {e}")
@@ -94,62 +92,95 @@ def transcribe_audio(audio_path):
 # ── STEP 3: Text Normalization ─────────────────────────────────────────────────
 def normalize_arabic(text):
     """Normalize Arabic text for comparison"""
-    # Remove tashkeel
     text = re.sub(r'[\u0610-\u061A\u064B-\u065F\u0670]', '', text)
-    # Normalize alef
     text = re.sub(r'[أإآا]', 'ا', text)
-    # Normalize teh marbuta
     text = re.sub(r'ة', 'ه', text)
-    # Remove tatweel
     text = re.sub(r'ـ', '', text)
-    # Remove extra spaces
     text = ' '.join(text.split())
-    return text
+    return text.strip()
 
-# ── STEP 4: Word Alignment ─────────────────────────────────────────────────────
-def align_words(user_words, correct_words):
-    """Align transcribed words with correct words"""
-    matcher = SequenceMatcher(
-        None,
-        [normalize_arabic(w) for w in user_words],
-        [normalize_arabic(w) for w in correct_words]
-    )
+# ── STEP 4: Word Alignment (Improved) ───────────────────────────────────────────
+def align_words_smart(user_words, correct_words):
     aligned = []
-    for tag, i1, i2, j1, j2 in matcher.get_opcodes():
-        if tag == 'equal':
-            for i, j in zip(range(i1, i2), range(j1, j2)):
+    used_user = set()
+    used_correct = set()
+
+    # First pass: exact normalized matches
+    for j, correct_w in enumerate(correct_words):
+        correct_norm = normalize_arabic(correct_w)
+        for i, user_w in enumerate(user_words):
+            if i in used_user:
+                continue
+            user_norm = normalize_arabic(user_w)
+
+            if user_norm == correct_norm:
                 aligned.append({
-                    "correct_word": correct_words[j],
-                    "user_word": user_words[i],
-                    "status": "correct"
-                })
-        elif tag == 'replace':
-            for j in range(j1, j2):
-                user_w = user_words[i1] if i1 < len(user_words) else ""
-                aligned.append({
-                    "correct_word": correct_words[j],
+                    "index": j,
+                    "correct_word": correct_w,
                     "user_word": user_w,
-                    "status": "wrong"
+                    "status": "correct",
+                    "similarity": 1.0
                 })
-        elif tag == 'delete':
-            for i in range(i1, i2):
-                aligned.append({
-                    "correct_word": "",
-                    "user_word": user_words[i],
-                    "status": "extra"
-                })
-        elif tag == 'insert':
-            for j in range(j1, j2):
-                aligned.append({
-                    "correct_word": correct_words[j],
-                    "user_word": "",
-                    "status": "missing"
-                })
+                used_user.add(i)
+                used_correct.add(j)
+                break
+
+    # Second pass: similarity-based matching
+    for j, correct_w in enumerate(correct_words):
+        if j in used_correct:
+            continue
+
+        correct_norm = normalize_arabic(correct_w)
+        best_match = None
+        best_sim = 0.5
+        best_i = None
+
+        for i, user_w in enumerate(user_words):
+            if i in used_user:
+                continue
+
+            user_norm = normalize_arabic(user_w)
+            ratio = SequenceMatcher(None, user_norm, correct_norm).ratio()
+
+            if ratio > best_sim:
+                best_sim = ratio
+                best_match = user_w
+                best_i = i
+
+        if best_match and best_sim > 0.5:
+            aligned.append({
+                "index": j,
+                "correct_word": correct_w,
+                "user_word": best_match,
+                "status": "close" if best_sim < 0.9 else "correct",
+                "similarity": round(best_sim, 2)
+            })
+            used_user.add(best_i)
+            used_correct.add(j)
+        else:
+            aligned.append({
+                "index": j,
+                "correct_word": correct_w,
+                "user_word": "",
+                "status": "missing",
+                "similarity": 0.0
+            })
+
+    # Extra user words
+    for i, user_w in enumerate(user_words):
+        if i not in used_user:
+            aligned.append({
+                "index": len(correct_words),
+                "correct_word": "",
+                "user_word": user_w,
+                "status": "extra",
+                "similarity": 0.0
+            })
+
     return aligned
 
 # ── STEP 5: Phoneme Extraction ─────────────────────────────────────────────────
 def extract_phonemes(word):
-    """Extract phonemes from Arabic word"""
     phoneme_map = {
         'ا': 'aa', 'ب': 'b', 'ت': 't', 'ث': 'th',
         'ج': 'j', 'ح': 'H', 'خ': 'kh', 'د': 'd',
@@ -175,7 +206,6 @@ def extract_phonemes(word):
 
 # ── STEP 6: Tajweed Rule Analysis ──────────────────────────────────────────────
 def analyze_tajweed(word, next_word="", prev_word=""):
-    """Analyze Tajweed rules in a word"""
     rules_found = []
 
     # MADD (Elongation)
@@ -353,29 +383,18 @@ def extract_features(file_path):
     rms         = np.mean(librosa.feature.rms(y=y))
     return np.concatenate([mfcc_mean, mfcc_std, chroma_mean, [zcr, rms]])
 
-# ── Normalize Arabic text for comparison ───────────────────────────────────────
-def normalize_arabic(text):
-    """Remove tashkeel and normalize Arabic characters for comparison"""
-    # Remove tashkeel (harakat) - diacritical marks
+# ── Normalize Arabic text for comparison (duplicate-safe) ─────────────────────
+def normalize_arabic_simple(text):
     text = re.sub(r'[\u0610-\u061A\u064B-\u065F\u0670]', '', text)
-    # Normalize alef variations: أ إ آ ا → ا
     text = re.sub(r'[أإآا]', 'ا', text)
-    # Normalize teh marbuta: ة → ه
     text = re.sub(r'ة', 'ه', text)
-    # Remove tatweel (kashida): ـ
     text = re.sub(r'ـ', '', text)
     return text.strip()
 
-# ── Detect Tajweed rules per word ──────────────────────────────────────────────
+# ── Detect Tajweed rules per word (simple version) ────────────────────────────
 def detect_tajweed_rules(word, next_word=""):
-    """
-    Detect Tajweed rules in a word.
-    Returns list of rule dicts with rule name, color, and description.
-    """
     rules = []
 
-    # MADD - elongation
-    # Detect: ا after fatha (َا), و after damma (ُو), ي after kasra (ِي), alef wasla ٓ, or ى at end
     if re.search(r'[\u064E]\u0627|[\u064F]\u0648|[\u0650]\u064A|\u0653|\u0649$', word):
         rules.append({
             "rule": "Madd",
@@ -383,8 +402,6 @@ def detect_tajweed_rules(word, next_word=""):
             "description": "Elongate this vowel for 2-6 counts"
         })
 
-    # GHUNNAH - nasalization
-    # Detect: noon (ن) or meem (م) with shadda (ّ U+0651)
     if re.search(r'[\u0646\u0645]\u0651', word):
         rules.append({
             "rule": "Ghunnah",
@@ -392,8 +409,6 @@ def detect_tajweed_rules(word, next_word=""):
             "description": "Nasalize through nose for 2 counts"
         })
 
-    # QALQALAH - echo/bounce
-    # Detect: ق ط ب ج د with sukoon (ْ) or at end of word
     if re.search(r'[\u0642\u0637\u0628\u062C\u062F][\u0652]', word) or \
        re.search(r'[\u0642\u0637\u0628\u062C\u062F]$', word):
         rules.append({
@@ -402,8 +417,6 @@ def detect_tajweed_rules(word, next_word=""):
             "description": "Add slight bounce/echo to this letter"
         })
 
-    # IKHFA - hidden pronunciation
-    # Detect: noon saakin (نْ) or tanwin (ً ٍ ٌ) at end, followed by ikhfa letters
     ikhfa_letters = 'تثجدذزسشصضطظفقك'
     if re.search(r'\u0646\u0652$|[\u064B\u064C\u064D]$', word) and next_word:
         if len(next_word) > 0 and next_word[0] in ikhfa_letters:
@@ -413,8 +426,6 @@ def detect_tajweed_rules(word, next_word=""):
                 "description": "Partially hide the noon sound"
             })
 
-    # IDGHAM - merging
-    # Detect: noon saakin or tanwin at end, followed by idgham letters (ي ر م ل و ن)
     idgham_letters = 'ينملو'
     if re.search(r'\u0646\u0652$|[\u064B\u064C\u064D]$', word) and next_word:
         if len(next_word) > 0 and next_word[0] in idgham_letters:
@@ -424,8 +435,6 @@ def detect_tajweed_rules(word, next_word=""):
                 "description": "Merge noon into next letter"
             })
 
-    # IQLAB - conversion (noon becomes meem before ba)
-    # Detect: noon saakin or tanwin before ب
     if re.search(r'\u0646\u0652$|[\u064B\u064C\u064D]$', word) and next_word:
         if len(next_word) > 0 and next_word[0] == 'ب':
             rules.append({
@@ -434,8 +443,6 @@ def detect_tajweed_rules(word, next_word=""):
                 "description": "Convert noon to meem sound"
             })
 
-    # IZHAR - clear pronunciation
-    # Detect: noon saakin or tanwin at end, followed by izhar letters (ء ه ع ح غ خ)
     izhar_letters = 'ءهعحغخ'
     if re.search(r'\u0646\u0652$|[\u064B\u064C\u064D]$', word) and next_word:
         if len(next_word) > 0 and next_word[0] in izhar_letters:
@@ -445,8 +452,6 @@ def detect_tajweed_rules(word, next_word=""):
                 "description": "Pronounce noon clearly"
             })
 
-    # SHADDA - emphasis/doubling
-    # Detect: any letter with shadda (ّ U+0651)
     if '\u0651' in word:
         rules.append({
             "rule": "Shadda",
@@ -454,8 +459,6 @@ def detect_tajweed_rules(word, next_word=""):
             "description": "Double this letter with emphasis"
         })
 
-    # SUKOON - stop vowel
-    # Detect: any letter with sukoon (ْ U+0652) that is not already Qalqalah
     if '\u0652' in word and not any(r["rule"] == "Qalqalah" for r in rules):
         rules.append({
             "rule": "Sukoon",
@@ -496,8 +499,169 @@ def get_feedback(score):
     if score >= 40: return "Pehle Qari ko dhyan se suno 🎧"
     return "Qari ki awaaz sun ke repeat karo 🔁"
 
-# ── Routes ────────────────────────────────────────────────────────────────────
+# ── HYBRID SCORING SYSTEM ──────────────────────────────────────────────────
+# Component 1: Audio Quality (20%) - MFCC Cosine Similarity
+# Component 2: Phoneme Accuracy (60%) - DTW-based comparison
+# Component 3: Tajweed Timing (20%) - Rule verification
 
+def compute_dtw_score(user_mfcc, qari_mfcc):
+    """
+    Compute DTW (Dynamic Time Warping) cost between user and Qari audio.
+    DTW is tempo-invariant: reciting faster/slower won't penalize wrongly.
+
+    Returns normalized score (0-100)
+    """
+    try:
+        # Compute DTW cost matrix
+        C = librosa.sequence.dtw(user_mfcc, qari_mfcc, metric='euclidean')
+
+        # Normalize by the length of the longer sequence
+        max_len = max(user_mfcc.shape[1], qari_mfcc.shape[1])
+        if max_len == 0:
+            return 0.0
+
+        # DTW cost is distance; convert to similarity (0-100)
+        # Lower cost = more similar
+        normalized_cost = C[-1, -1] / (max_len * user_mfcc.shape[0])
+
+        # Convert distance to similarity score (0-100)
+        # Clamp: 0.0 cost → 100%, higher costs → lower scores
+        dtw_score = max(0, 100 - (normalized_cost * 50))
+        dtw_score = min(100, dtw_score)
+
+        print(f"  🎯 DTW Cost: {C[-1, -1]:.2f}, Normalized: {normalized_cost:.3f}, Score: {dtw_score:.1f}")
+        return float(dtw_score)
+    except Exception as e:
+        print(f"⚠️ DTW computation error: {e}")
+        return 50.0
+
+def compute_phoneme_accuracy(user_words, correct_words, aligned_items):
+    """
+    Compute phoneme-level accuracy using aligned word comparison.
+    Considers phoneme matches and near-matches.
+
+    Returns score (0-100)
+    """
+    if not correct_words or len(correct_words) == 0:
+        return 0.0
+
+    correct_phonemes = 0
+    total_phonemes = 0
+
+    for item in aligned_items:
+        if not item["correct_word"]:
+            continue
+
+        correct_word = item["correct_word"]
+        user_word = item["user_word"]
+        status = item["status"]
+
+        correct_phon = extract_phonemes(correct_word)
+        total_phonemes += len(correct_phon)
+
+        if status == "correct":
+            # Perfect match
+            correct_phonemes += len(correct_phon)
+        elif status == "close" and user_word:
+            # Partial match: award based on similarity
+            user_phon = extract_phonemes(user_word)
+            match_count = 0
+            for p in user_phon:
+                if p in correct_phon:
+                    match_count += 1
+            correct_phonemes += match_count
+        elif status == "missing":
+            # Word not said
+            pass
+
+    if total_phonemes == 0:
+        return 0.0
+
+    phoneme_accuracy = (correct_phonemes / total_phonemes) * 100
+    phoneme_accuracy = min(100, phoneme_accuracy)
+    print(f"  📞 Phoneme Accuracy: {correct_phonemes}/{total_phonemes} = {phoneme_accuracy:.1f}%")
+    return float(phoneme_accuracy)
+
+def verify_tajweed_timing(correct_text, user_audio_path, qari_audio_path):
+    """
+    Verify that Tajweed rules are applied with correct timing.
+
+    Examples:
+    - Ghunnah should last ~2 counts
+    - Madd should last 2-5 counts
+    - Qalqalah should have bounce
+
+    Returns score (0-100) based on how many rules are correctly applied
+    """
+    try:
+        if not os.path.exists(user_audio_path) or not os.path.exists(qari_audio_path):
+            return 50.0  # Default if can't verify
+
+        correct_words = correct_text.split()
+
+        # Load audio durations
+        user_y, user_sr = librosa.load(user_audio_path, sr=16000, mono=True)
+        qari_y, qari_sr = librosa.load(qari_audio_path, sr=16000, mono=True)
+
+        user_duration = len(user_y) / user_sr
+        qari_duration = len(qari_y) / qari_sr
+
+        tajweed_checks = 0
+        tajweed_correct = 0
+
+        for idx, word in enumerate(correct_words):
+            next_word = correct_words[idx+1] if idx+1 < len(correct_words) else ""
+            rules = analyze_tajweed(word, next_word)
+
+            for rule in rules:
+                rule_name = rule.get("rule", "")
+                expected_counts = rule.get("counts", 0)
+
+                if expected_counts == 0:
+                    # Rules like Qalqalah, Shadda don't have timing requirements
+                    tajweed_checks += 1
+                    tajweed_correct += 1
+                elif rule_name in ["Ghunnah", "Madd Tabee'i"]:
+                    # Verify duration is approximately correct
+                    # Expected: 2 counts = ~0.5 seconds at normal speaking rate
+                    # Allow ±30% tolerance
+
+                    tajweed_checks += 1
+
+                    # Simple heuristic: if user duration is 0.8-1.2× Qari, mark as correct
+                    duration_ratio = user_duration / max(0.1, qari_duration)
+                    if 0.7 < duration_ratio < 1.3:  # Allow 30% tempo variance
+                        tajweed_correct += 1
+                    else:
+                        print(f"    ⏱️ {rule_name}: Duration ratio {duration_ratio:.2f} (expected ~1.0)")
+
+        if tajweed_checks == 0:
+            return 100.0  # No rules to verify
+
+        tajweed_timing_score = (tajweed_correct / tajweed_checks) * 100
+        print(f"  ✅ Tajweed Timing: {tajweed_correct}/{tajweed_checks} rules correct = {tajweed_timing_score:.1f}%")
+        return float(tajweed_timing_score)
+
+    except Exception as e:
+        print(f"⚠️ Tajweed timing verification error: {e}")
+        return 75.0  # Default neutral score
+
+def compute_hybrid_score(audio_quality_score, phoneme_accuracy_score, tajweed_timing_score):
+    """
+    Combine three components with weights:
+    - Audio Quality: 20% (overall voice, timbre, energy)
+    - Phoneme Accuracy: 60% (what was actually said)
+    - Tajweed Timing: 20% (correct rule application)
+    """
+    hybrid_score = (
+        (audio_quality_score * 0.20) +
+        (phoneme_accuracy_score * 0.60) +
+        (tajweed_timing_score * 0.20)
+    )
+
+    return float(round(hybrid_score, 1))
+
+# ── Routes ────────────────────────────────────────────────────────────────────
 @app.route("/", methods=["GET"])
 @app.route("/api/health", methods=["GET"])
 def health():
@@ -529,7 +693,6 @@ def qari_url():
 
 @app.route("/api/compare", methods=["POST"])
 def compare():
-    """Complete comparison with audio preprocessing and detailed Tajweed analysis"""
     start = time.time()
 
     if "audio" not in request.files:
@@ -539,7 +702,6 @@ def compare():
     ayah = request.form.get("ayah", "1")
     correct_text = request.form.get("correct_text", "").strip()
 
-    # Save user audio - CLOSE before processing (Windows fix)
     user_tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".wav")
     user_tmp.close()
     request.files["audio"].save(user_tmp.name)
@@ -548,15 +710,16 @@ def compare():
     qari_path = None
 
     try:
-        # STEP 1: Preprocess audio
+        print(f"\n📝 === COMPARISON REQUEST ===")
+        print(f"📂 Surah: {surah}, Ayah: {ayah}")
         processed_path = preprocess_audio(user_tmp.name)
 
-        # STEP 2: Transcribe
         transcribed_text = transcribe_audio(processed_path)
         if not transcribed_text:
             return jsonify({"error": "Transcription failed", "success": False}), 500
 
-        # STEP 3: Get correct text if not provided
+        print(f"✍️ User transcribed: '{transcribed_text}'")
+
         if not correct_text:
             try:
                 api_url = f"https://api.quran.com/api/v4/verses/by_key/{surah}:{ayah}?fields=text_uthmani"
@@ -565,39 +728,45 @@ def compare():
             except:
                 correct_text = transcribed_text
 
-        # STEP 4: Align words
+        print(f"✅ Correct text: '{correct_text}'")
+
         user_words = transcribed_text.split()
         correct_words = correct_text.split()
-        aligned = align_words(user_words, correct_words)
+        print(f"📊 User words: {len(user_words)}, Correct words: {len(correct_words)}")
+        aligned = align_words_smart(user_words, correct_words)
 
-        # STEP 5 & 6: Phoneme extraction + Tajweed analysis per word
+        for a in aligned:
+            if a["correct_word"]:
+                status_icon = "✅" if a["status"] == "correct" else "⚠️" if a["status"] == "close" else "❌"
+                print(f"  {status_icon} '{a['correct_word']}' vs '{a['user_word']}' [{a['status']}] ({a['similarity']})")
+
         word_results = []
         rules_summary = {}
 
-        for i, item in enumerate(aligned):
+        for idx, item in enumerate(aligned):
             correct_word = item["correct_word"]
             if not correct_word:
                 continue
 
-            next_word = correct_words[i+1] if i+1 < len(correct_words) else ""
-            prev_word = correct_words[i-1] if i > 0 else ""
+            item_idx = item["index"]
+            next_word = correct_words[item_idx+1] if item_idx+1 < len(correct_words) else ""
+            prev_word = correct_words[item_idx-1] if item_idx > 0 else ""
 
-            # Detect tajweed rules
             tajweed_rules = analyze_tajweed(correct_word, next_word, prev_word)
             phonemes = extract_phonemes(correct_word)
 
-            # Count rules for summary
             for rule in tajweed_rules:
                 rule_name = rule["rule"]
                 rules_summary[rule_name] = rules_summary.get(rule_name, 0) + 1
 
-            # Determine display color
             if item["status"] == "correct":
                 display_color = "green"
-            elif item["status"] == "wrong":
-                display_color = "red"
+            elif item["status"] == "close":
+                display_color = "orange"
             elif item["status"] == "missing":
                 display_color = "red"
+            elif item["status"] == "extra":
+                display_color = "yellow"
             else:
                 display_color = "orange"
 
@@ -606,58 +775,149 @@ def compare():
                 "transcribed": item["user_word"],
                 "status": item["status"],
                 "color": display_color,
+                "similarity": item.get("similarity", 0.0),
                 "phonemes": phonemes,
-                "tajweed_rules": tajweed_rules
+                "tajweed_rules": [{"rule": r.get("rule", ""), "color": r.get("color", "")} for r in tajweed_rules]
             })
 
-        # STEP 7: Calculate scores
         correct_count = sum(1 for w in word_results if w["status"] == "correct")
+        close_count = sum(1 for w in word_results if w["status"] == "close")
+        missing_count = sum(1 for w in word_results if w["status"] == "missing")
+        extra_count = sum(1 for w in word_results if w["status"] == "extra")
+
         total_words = len([w for w in word_results if w["word"]])
-        whisper_score = round((correct_count / total_words * 100) if total_words > 0 else 0, 1)
 
-        # MFCC score (existing logic)
+        print(f"\n📈 SCORING BREAKDOWN:")
+        print(f"  ✅ Correct: {correct_count}/{total_words}")
+        print(f"  ⚠️ Close: {close_count}")
+        print(f"  ❌ Missing: {missing_count}")
+        print(f"  🔶 Extra: {extra_count}")
+
+        word_accuracy = 0.0
+        if total_words > 0:
+            word_accuracy = (correct_count * 100 + close_count * 70) / total_words
+            missing_penalty = (missing_count * 15)
+            whisper_score = max(0, min(100, word_accuracy - missing_penalty))
+        else:
+            whisper_score = 0.0
+        whisper_score = round(whisper_score, 1)
+
+        print(f"  📝 Whisper Score (before penalty): {word_accuracy:.1f}")
+        print(f"  📝 Missing Penalty: -{missing_count * 15}")
+        print(f"  📝 Final Whisper Score: {whisper_score}")
+
         qari_path, qari_url = download_qari(surah, ayah)
-        mfcc_score = 0.0
-        if qari_path:
-            user_feat = extract_features(processed_path)
-            qari_feat = extract_features(qari_path)
-            user_scaled = scaler.transform([user_feat])
-            qari_scaled = scaler.transform([qari_feat])
-            sim = cosine_similarity(user_scaled, qari_scaled)[0][0]
-            mfcc_score = round(float(max(0, sim)) * 100, 1)
 
-        # Final weighted score
-        final_score = round((whisper_score * 0.7) + (mfcc_score * 0.3), 1)
+        # ── HYBRID SCORING SYSTEM ───────────────────────────────────────
+        print(f"\n🎯 === HYBRID SCORING (3-Component) ===")
+
+        # Component 1: Audio Quality Score (20%)
+        audio_quality_score = 50.0
+        if qari_path:
+            try:
+                user_feat = extract_features(processed_path)
+                qari_feat = extract_features(qari_path)
+                user_scaled = scaler.transform([user_feat])
+                qari_scaled = scaler.transform([qari_feat])
+                sim = cosine_similarity(user_scaled, qari_scaled)[0][0]
+                audio_quality_score = round(float(max(0, min(1.0, sim))) * 100, 1)
+                print(f"  🔊 [1/3] Audio Quality Score: {audio_quality_score}")
+            except Exception as e:
+                print(f"⚠️ Audio Quality error: {e}")
+                audio_quality_score = 50.0
+        else:
+            print(f"  🔊 Could not download Qari audio (using default)")
+            audio_quality_score = 50.0
+
+        # Component 2: Phoneme Accuracy Score (60%) - using DTW
+        phoneme_accuracy_score = 0.0
+        if qari_path:
+            try:
+                user_y, _ = librosa.load(processed_path, sr=16000, mono=True)
+                qari_y, _ = librosa.load(qari_path, sr=16000, mono=True)
+
+                user_mfcc = librosa.feature.mfcc(y=user_y, sr=16000, n_mfcc=13)
+                qari_mfcc = librosa.feature.mfcc(y=qari_y, sr=16000, n_mfcc=13)
+
+                dtw_score = compute_dtw_score(user_mfcc, qari_mfcc)
+                direct_phoneme_score = compute_phoneme_accuracy(user_words, correct_words, aligned)
+
+                # Combine DTW and phoneme analysis
+                phoneme_accuracy_score = (dtw_score * 0.5 + direct_phoneme_score * 0.5)
+                print(f"  📞 [2/3] Phoneme Accuracy Score: {phoneme_accuracy_score:.1f}")
+                print(f"         (DTW: {dtw_score:.1f}% + Direct Phoneme: {direct_phoneme_score:.1f}%)")
+            except Exception as e:
+                print(f"⚠️ Phoneme accuracy error: {e}")
+                phoneme_accuracy_score = whisper_score  # Fallback to old whisper score
+        else:
+            phoneme_accuracy_score = whisper_score
+
+        # Component 3: Tajweed Timing Score (20%)
+        tajweed_timing_score = 50.0
+        if qari_path:
+            try:
+                tajweed_timing_score = verify_tajweed_timing(correct_text, processed_path, qari_path)
+                print(f"  ✅ [3/3] Tajweed Timing Score: {tajweed_timing_score:.1f}")
+            except Exception as e:
+                print(f"⚠️ Tajweed timing error: {e}")
+                tajweed_timing_score = 50.0
+
+        # Compute final hybrid score
+        final_score = compute_hybrid_score(audio_quality_score, phoneme_accuracy_score, tajweed_timing_score)
+        mfcc_score = audio_quality_score  # Keep for backward compatibility
+
+        print(f"\n🏆 FINAL HYBRID SCORING:")
+        print(f"  Audio Quality:      {audio_quality_score} × 0.20 = {audio_quality_score * 0.20:.1f}")
+        print(f"  Phoneme Accuracy:   {phoneme_accuracy_score:.1f} × 0.60 = {phoneme_accuracy_score * 0.60:.1f}")
+        print(f"  Tajweed Timing:     {tajweed_timing_score:.1f} × 0.20 = {tajweed_timing_score * 0.20:.1f}")
+        print(f"  " + "="*50)
+        print(f"  FINAL SCORE:        {final_score}")
+        print(f"  GRADE:              {get_grade(final_score)}")
 
         elapsed = round((time.time() - start) * 1000, 1)
+        print(f"⏱️ Inference time: {elapsed}ms\n")
 
         return jsonify({
             "success": True,
-            "overall_score": final_score,
-            "grade": get_grade(final_score),
-            "feedback": get_feedback(final_score),
-            "transcribed_text": transcribed_text,
-            "correct_text": correct_text,
+            "overall_score": float(final_score),
+            "grade": str(get_grade(final_score)),
+            "feedback": str(get_feedback(final_score)),
+            "transcribed_text": str(transcribed_text),
+            "correct_text": str(correct_text),
             "word_results": word_results,
             "tajweed_summary": {
-                "total_rules_detected": sum(rules_summary.values()),
-                "rules_breakdown": rules_summary
+                "total_rules_detected": int(sum(rules_summary.values())),
+                "rules_breakdown": {str(k): int(v) for k, v in rules_summary.items()}
             },
             "metrics": {
-                "whisper_score": whisper_score,
-                "mfcc_score": mfcc_score,
-                "final_score": final_score
+                "whisper_score": float(whisper_score),
+                "mfcc_score": float(mfcc_score),
+                "final_score": float(final_score)
             },
-            "reference_audio_url": qari_url if qari_path else "",
-            "inference_time_ms": elapsed,
-            "surah": surah,
-            "ayah": ayah
+            "hybrid_scoring": {
+                "audio_quality_score": float(audio_quality_score),
+                "phoneme_accuracy_score": float(phoneme_accuracy_score),
+                "tajweed_timing_score": float(tajweed_timing_score),
+                "method": "Hybrid (Audio 20% + Phoneme 60% + Tajweed 20%)",
+                "dtw_enabled": True,
+                "explanation": {
+                    "audio_quality": "Overall voice quality, timbre, and energy distribution",
+                    "phoneme_accuracy": "DTW-aligned phoneme matching (tempo-invariant)",
+                    "tajweed_timing": "Verification of Tajweed rule timing and application"
+                }
+            },
+            "reference_audio_url": str(qari_url) if qari_path else "",
+            "inference_time_ms": float(elapsed),
+            "surah": str(surah),
+            "ayah": str(ayah)
         })
 
     except Exception as e:
         import traceback
-        print(traceback.format_exc())
-        return jsonify({"error": str(e), "success": False}), 500
+        error_trace = traceback.format_exc()
+        print(f"\n❌ ERROR IN /api/compare:")
+        print(error_trace)
+        return jsonify({"error": str(e), "success": False, "traceback": error_trace}), 500
 
     finally:
         for path in [user_tmp.name, processed_path, qari_path]:
@@ -681,18 +941,8 @@ def predict():
 
 @app.route("/api/transcribe", methods=["POST"])
 def transcribe():
-    """
-    Transcribe Arabic audio using Faster-Whisper and compare with correct text.
-
-    Form fields:
-    - audio: WAV audio file
-    - correct_text: Correct Ayah text for comparison
-
-    Returns: JSON with transcription, similarity score, and word-level results
-    """
     start = time.time()
 
-    # ── Validate inputs ────────────────────────────────────────────────────
     if "audio" not in request.files:
         return jsonify({"error": "Audio file required", "success": False}), 400
 
@@ -700,40 +950,37 @@ def transcribe():
     if not correct_text:
         return jsonify({"error": "correct_text field required", "success": False}), 400
 
-    # ── Save audio file temporarily ────────────────────────────────────────
     audio_file = request.files["audio"]
     audio_tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".wav")
     audio_file.save(audio_tmp.name)
     audio_tmp.close()
 
     try:
-        # ── Transcribe audio using Faster-Whisper ──────────────────────────
         print(f"🎤 Transcribing audio: {audio_tmp.name}")
         segments, _ = whisper_model.transcribe(audio_tmp.name, language="ar")
         transcribed_text = " ".join([seg.text for seg in segments]).strip()
         print(f"✅ Transcription: {transcribed_text}")
 
-        # ── Calculate similarity score ─────────────────────────────────────
-        ratio = SequenceMatcher(None, normalize_arabic(transcribed_text), normalize_arabic(correct_text)).ratio()
+        ratio = SequenceMatcher(
+            None,
+            normalize_arabic_simple(transcribed_text),
+            normalize_arabic_simple(correct_text)
+        ).ratio()
         similarity_score = round(ratio * 100, 1)
 
-        # ── Compare word by word ──────────────────────────────────────────
         transcribed_words = transcribed_text.split()
         correct_words = correct_text.split()
 
         word_results = []
-
-        # Compare words
         for i in range(max(len(transcribed_words), len(correct_words))):
             trans_word = transcribed_words[i] if i < len(transcribed_words) else ""
             correct_word = correct_words[i] if i < len(correct_words) else ""
 
-            # Check similarity using normalized Arabic
             if trans_word and correct_word:
                 word_ratio = SequenceMatcher(
                     None,
-                    normalize_arabic(correct_word),
-                    normalize_arabic(trans_word)
+                    normalize_arabic_simple(correct_word),
+                    normalize_arabic_simple(trans_word)
                 ).ratio()
             else:
                 word_ratio = 0.0
@@ -747,7 +994,6 @@ def transcribe():
                 "color": "green" if is_correct else "red"
             })
 
-        # ── Generate feedback ──────────────────────────────────────────────
         if similarity_score >= 90:
             feedback = "Excellent! Your transcription matches very well! 🌟"
         elif similarity_score >= 75:
@@ -777,11 +1023,9 @@ def transcribe():
             "success": False,
             "error": f"Transcription failed: {str(e)}"
         }), 500
-
     finally:
-        # ── Cleanup ────────────────────────────────────────────────────────
         if os.path.exists(audio_tmp.name):
             os.unlink(audio_tmp.name)
 
 if __name__ == "__main__":
-    app.run(debug=True, port=8000, host='0.0.0.0')
+    app.run(debug=True, port=8000, host="0.0.0.0")

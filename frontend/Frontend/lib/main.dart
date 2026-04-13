@@ -6,7 +6,7 @@ import 'package:tajweed_corrector/screens/Splash_Screen.dart';
 import 'package:tajweed_corrector/services/sample_data_initializer.dart';
 import 'package:tajweed_corrector/services/theme_service.dart';
 import 'screens/Loginpage.dart';
-import 'home/home.dart';
+import 'screens/NewHomeScreen_Gamified.dart'; // ← NEW GAMIFIED HOME SCREEN
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -88,7 +88,7 @@ class AuthWrapper extends StatelessWidget {
         // If user is logged in, go to home
         if (snapshot.hasData && snapshot.data != null) {
           print('✅ User authenticated: ${snapshot.data!.email}');
-          return const ReciteRightScreen();
+          return const NewHomeScreen(); // ← NEW GAMIFIED HOME SCREEN
         }
 
         // If user is not logged in, go to login
