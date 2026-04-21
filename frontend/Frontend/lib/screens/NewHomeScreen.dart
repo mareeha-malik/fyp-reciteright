@@ -276,9 +276,9 @@ class _NewHomeScreenState extends State<NewHomeScreen>
                 child: Container(
                   margin: const EdgeInsets.symmetric(horizontal: 8),
                   decoration: BoxDecoration(
-                    color: (item['color'] as Color).withOpacity(0.1),
+                    color: (item['color'] as Color).withValues(alpha: 0.1),
                     border: Border.all(
-                      color: (item['color'] as Color).withOpacity(0.3),
+                      color: (item['color'] as Color).withValues(alpha: 0.3),
                       width: 1.5,
                     ),
                     borderRadius: BorderRadius.circular(12),
@@ -305,7 +305,7 @@ class _NewHomeScreenState extends State<NewHomeScreen>
                         item['description'] as String,
                         style: TextStyle(
                           fontSize: 11,
-                          color: (item['color'] as Color).withOpacity(0.7),
+                          color: (item['color'] as Color).withValues(alpha: 0.7),
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -315,7 +315,7 @@ class _NewHomeScreenState extends State<NewHomeScreen>
                         item['duration'] as String,
                         style: TextStyle(
                           fontSize: 10,
-                          color: (item['color'] as Color).withOpacity(0.6),
+                          color: (item['color'] as Color).withValues(alpha: 0.6),
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -422,12 +422,12 @@ class _NewHomeScreenState extends State<NewHomeScreen>
               color: cardColor,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: (action['color'] as Color).withOpacity(0.2),
+                color: (action['color'] as Color).withValues(alpha: 0.2),
                 width: 1,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
+                  color: Colors.black.withValues(alpha: 0.05),
                   blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),
@@ -439,7 +439,7 @@ class _NewHomeScreenState extends State<NewHomeScreen>
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: (action['color'] as Color).withOpacity(0.1),
+                    color: (action['color'] as Color).withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
@@ -682,7 +682,7 @@ class _NewHomeScreenState extends State<NewHomeScreen>
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.15),
+            color: Colors.black.withValues(alpha: 0.15),
             blurRadius: 16,
             offset: const Offset(0, 8),
           ),
@@ -859,7 +859,7 @@ class _NewHomeScreenState extends State<NewHomeScreen>
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -931,7 +931,7 @@ class _NewHomeScreenState extends State<NewHomeScreen>
                   padding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF1E4976).withOpacity(0.1),
+                    color: const Color(0xFF1E4976).withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Column(
@@ -1103,7 +1103,7 @@ class _NewHomeScreenState extends State<NewHomeScreen>
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -1161,7 +1161,7 @@ class _NewHomeScreenState extends State<NewHomeScreen>
               child: LinearProgressIndicator(
                 value: int.parse(value) / target,
                 minHeight: 4,
-                backgroundColor: color.withOpacity(0.1),
+                backgroundColor: color.withValues(alpha: 0.1),
                 valueColor: AlwaysStoppedAnimation<Color>(color),
               ),
             ),
@@ -1183,7 +1183,7 @@ class _NewHomeScreenState extends State<NewHomeScreen>
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -1199,7 +1199,7 @@ class _NewHomeScreenState extends State<NewHomeScreen>
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFF9800).withOpacity(0.1),
+                  color: const Color(0xFFFF9800).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(
@@ -1383,7 +1383,7 @@ class _NewHomeScreenState extends State<NewHomeScreen>
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -1395,7 +1395,7 @@ class _NewHomeScreenState extends State<NewHomeScreen>
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
+                color: color.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(

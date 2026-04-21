@@ -128,7 +128,7 @@ class _AvatarSelectionScreenState extends State<AvatarSelectionScreen> {
         backgroundColor: const Color(0xFF1E4976),
         foregroundColor: Colors.white,
         elevation: 4,
-        shadowColor: const Color(0xFF1E4976).withOpacity(0.3),
+        shadowColor: const Color(0xFF1E4976).withValues(alpha: 0.3),
       ),
       body: isLoading
           ? const Center(
@@ -145,8 +145,8 @@ class _AvatarSelectionScreenState extends State<AvatarSelectionScreen> {
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [
-                          const Color(0xFF1E4976).withOpacity(0.1),
-                          const Color(0xFF2E5F8F).withOpacity(0.05),
+                          const Color(0xFF1E4976).withValues(alpha: 0.1),
+                          const Color(0xFF2E5F8F).withValues(alpha: 0.05),
                         ],
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
@@ -154,7 +154,7 @@ class _AvatarSelectionScreenState extends State<AvatarSelectionScreen> {
                       borderRadius: BorderRadius.circular(24),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF1E4976).withOpacity(0.12),
+                          color: const Color(0xFF1E4976).withValues(alpha: 0.12),
                           blurRadius: 16,
                           offset: const Offset(0, 6),
                           spreadRadius: 2,
@@ -178,8 +178,8 @@ class _AvatarSelectionScreenState extends State<AvatarSelectionScreen> {
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
                               colors: [
-                                const Color(0xFF1E4976).withOpacity(0.15),
-                                const Color(0xFF2E5F8F).withOpacity(0.08),
+                                const Color(0xFF1E4976).withValues(alpha: 0.15),
+                                const Color(0xFF2E5F8F).withValues(alpha: 0.08),
                               ],
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
@@ -191,7 +191,7 @@ class _AvatarSelectionScreenState extends State<AvatarSelectionScreen> {
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: const Color(0xFF1E4976).withOpacity(0.2),
+                                color: const Color(0xFF1E4976).withValues(alpha: 0.2),
                                 blurRadius: 16,
                                 spreadRadius: 3,
                               ),
@@ -245,7 +245,7 @@ class _AvatarSelectionScreenState extends State<AvatarSelectionScreen> {
                       borderRadius: BorderRadius.circular(24),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF1E4976).withOpacity(0.1),
+                          color: const Color(0xFF1E4976).withValues(alpha: 0.1),
                           blurRadius: 16,
                           offset: const Offset(0, 6),
                           spreadRadius: 1,
@@ -303,7 +303,7 @@ class _AvatarSelectionScreenState extends State<AvatarSelectionScreen> {
                                             ? [
                                                 BoxShadow(
                                                   color: const Color(0xFF1E4976)
-                                                      .withOpacity(0.2),
+                                                      .withValues(alpha: 0.2),
                                                   blurRadius: 8,
                                                   spreadRadius: 1,
                                                 ),
@@ -363,15 +363,15 @@ class _AvatarSelectionScreenState extends State<AvatarSelectionScreen> {
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [
-                          const Color(0xFF1E4976).withOpacity(0.08),
-                          const Color(0xFF1E4976).withOpacity(0.03),
+                          const Color(0xFF1E4976).withValues(alpha: 0.08),
+                          const Color(0xFF1E4976).withValues(alpha: 0.03),
                         ],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: const Color(0xFF1E4976).withOpacity(0.2),
+                        color: const Color(0xFF1E4976).withValues(alpha: 0.2),
                         width: 1.5,
                       ),
                     ),
@@ -416,7 +416,7 @@ class _AvatarSelectionScreenState extends State<AvatarSelectionScreen> {
                                 borderRadius: BorderRadius.circular(12),
                                 side: BorderSide(
                                   color: const Color(0xFF1E4976)
-                                      .withOpacity(0.25),
+                                      .withValues(alpha: 0.25),
                                   width: 1.2,
                                 ),
                               ),

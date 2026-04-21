@@ -9,7 +9,7 @@ class SessionService {
   final Dio _dio;
   static const String _baseUrl = String.fromEnvironment(
     'BACKEND_BASE_URL',
-    defaultValue: 'http://192.168.100.7:8000',
+    defaultValue: 'http://192.168.100.11:8000',
   );
 
   SessionService({Dio? dio})

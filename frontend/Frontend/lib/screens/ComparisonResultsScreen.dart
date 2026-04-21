@@ -75,26 +75,31 @@ class _ComparisonResultsScreenState extends State<ComparisonResultsScreen> {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) return;
 
-      final metrics = widget.comparisonResult['metrics'] as Map<String, dynamic>? ?? {};
-      final List<dynamic> words = widget.comparisonResult['word_results'] as List? ?? const [];
+      final metrics = Map<String, dynamic>.from(
+        widget.comparisonResult['metrics'] as Map? ?? const {},
+      );
+      final List<Map<String, dynamic>> words =
+          (widget.comparisonResult['word_results'] as List? ?? const [])
+              .whereType<Map>()
+              .map((e) => Map<String, dynamic>.from(e))
+              .toList();
 
       final mistakes = words
-          .where((w) => (w as Map<String, dynamic>)['status'] != 'correct')
+          .where((w) => w['status'] != 'correct')
           .map((w) {
-            final word = w as Map<String, dynamic>;
-            final tajweedRules = (word['tajweed_rules'] as List?)
+            final tajweedRules = (w['tajweed_rules'] as List?)
                     ?.map((r) => (r is Map<String, dynamic>) ? (r['rule'] ?? '').toString() : r.toString())
                     .where((r) => r.isNotEmpty)
                     .toList() ??
                 const <String>[];
 
             return {
-              'word': (word['word'] ?? word['correct_word'] ?? '').toString(),
+              'word': (w['word'] ?? w['correct_word'] ?? '').toString(),
               'ayah': widget.verse,
               'surah': widget.surah,
               'tajweedRules': tajweedRules,
-              'errorType': (word['status'] ?? 'mispronunciation').toString(),
-              'similarity': ((word['similarity'] as num?)?.toDouble() ?? 0.0).clamp(0.0, 1.0),
+              'errorType': (w['status'] ?? 'mispronunciation').toString(),
+              'similarity': ((w['similarity'] as num?)?.toDouble() ?? 0.0).clamp(0.0, 1.0),
               'occurredAt': DateTime.now().toUtc().toIso8601String(),
             };
           })
@@ -102,10 +107,10 @@ class _ComparisonResultsScreenState extends State<ComparisonResultsScreen> {
           .toList();
 
       final totalWords = words.length;
-      final correctWords = words.where((w) => (w as Map<String, dynamic>)['status'] == 'correct').length;
-      final closeWords = words.where((w) => (w as Map<String, dynamic>)['status'] == 'close').length;
-      final missingWords = words.where((w) => (w as Map<String, dynamic>)['status'] == 'missing').length;
-      final extraWords = words.where((w) => (w as Map<String, dynamic>)['status'] == 'extra').length;
+      final correctWords = words.where((w) => w['status'] == 'correct').length;
+      final closeWords = words.where((w) => w['status'] == 'close').length;
+      final missingWords = words.where((w) => w['status'] == 'missing').length;
+      final extraWords = words.where((w) => w['status'] == 'extra').length;
 
       final durationSeconds =
           ((widget.comparisonResult['duration_seconds'] as num?)?.toInt() ??
@@ -139,7 +144,7 @@ class _ComparisonResultsScreenState extends State<ComparisonResultsScreen> {
           ayah: widget.verse,
           overallScore: (widget.comparisonResult['overall_score'] as num?)?.toDouble() ?? 0.0,
           sessionId: (saved['sessionId'] ?? '').toString(),
-          wordResults: words.whereType<Map>().map((e) => e.cast<String, dynamic>()).toList(),
+          wordResults: words,
           recordedAt: DateTime.now().toUtc().toIso8601String(),
           whisperScore: (metrics['whisper_score'] as num?)?.toDouble(),
           mfccScore: (metrics['mfcc_score'] as num?)?.toDouble(),
@@ -311,8 +316,12 @@ class _ComparisonResultsScreenState extends State<ComparisonResultsScreen> {
     final inferenceTime = (widget.comparisonResult['inference_time_ms'] as num?)?.toDouble() ?? 0.0;
 
     // Extract metrics breakdown
-    final metrics = widget.comparisonResult['metrics'] as Map<String, dynamic>? ?? {};
-    final hybrid = widget.comparisonResult['hybrid_scoring'] as Map<String, dynamic>? ?? {};
+    final metrics = Map<String, dynamic>.from(
+      widget.comparisonResult['metrics'] as Map? ?? const {},
+    );
+    final hybrid = Map<String, dynamic>.from(
+      widget.comparisonResult['hybrid_scoring'] as Map? ?? const {},
+    );
     final whisperScore = (metrics['whisper_score'] as num?)?.toDouble() ?? 0.0;
     final dtwScore =
         (metrics['dtw_score'] as num?)?.toDouble() ??
@@ -333,9 +342,17 @@ class _ComparisonResultsScreenState extends State<ComparisonResultsScreen> {
     final mfccScore = (metrics['mfcc_score'] as num?)?.toDouble() ?? 0.0;
 
     // Extract word results and tajweed summary if available
-    final List<dynamic> wordResults = widget.comparisonResult['word_results'] as List? ?? [];
-    final tajweedSummary = widget.comparisonResult['tajweed_summary'] as Map<String, dynamic>? ?? {};
-    final rulesBreakdown = tajweedSummary['rules_breakdown'] as Map<String, dynamic>? ?? {};
+    final List<Map<String, dynamic>> wordResults =
+        (widget.comparisonResult['word_results'] as List? ?? const [])
+            .whereType<Map>()
+            .map((e) => Map<String, dynamic>.from(e))
+            .toList();
+    final tajweedSummary = Map<String, dynamic>.from(
+      widget.comparisonResult['tajweed_summary'] as Map? ?? const {},
+    );
+    final rulesBreakdown = Map<String, dynamic>.from(
+      tajweedSummary['rules_breakdown'] as Map? ?? const {},
+    );
 
     final surahName = getSurahName(widget.surah);
 
@@ -598,7 +615,10 @@ class _ComparisonResultsScreenState extends State<ComparisonResultsScreen> {
                       final transcribed = wr['transcribed'] as String? ?? '';
                       final status = wr['status'] as String? ?? 'wrong';
                       final color = wr['color'] as String? ?? 'red';
-                      final tajweedRules = wr['tajweed_rules'] as List? ?? [];
+                      final tajweedRules = (wr['tajweed_rules'] as List? ?? const [])
+                          .whereType<Map>()
+                          .map((e) => Map<String, dynamic>.from(e))
+                          .toList();
                       final phonemes = wr['phonemes'] as List? ?? [];
                       
                       Color statusColor;
@@ -672,7 +692,7 @@ class _ComparisonResultsScreenState extends State<ComparisonResultsScreen> {
                                 if (phonemes.isNotEmpty) ...[
                                   const SizedBox(height: 6),
                                   Text(
-                                    'Phonemes: ${(phonemes as List).join(' ')}',
+                                    'Phonemes: ${phonemes.join(' ')}',
                                     style: const TextStyle(
                                       fontSize: 11,
                                       color: Color(0xFF666666),
@@ -691,12 +711,16 @@ class _ComparisonResultsScreenState extends State<ComparisonResultsScreen> {
                                       final ruleArabic = rule['arabic'] as String? ?? '';
                                       final ruleColor = rule['color'] as String? ?? '#000000';
                                       final description = rule['description'] as String? ?? '';
-                                      final counts = rule['counts'] as int? ?? 0;
+                                      final counts = (rule['counts'] as num?)?.toInt() ?? 0;
                                       
-                                      // Parse hex color
-                                      Color ruleColorVal = Color(
-                                        int.parse('FF${ruleColor.replaceAll('#', '')}', radix: 16),
-                                      );
+                                      Color ruleColorVal;
+                                      try {
+                                        ruleColorVal = Color(
+                                          int.parse('FF${ruleColor.replaceAll('#', '')}', radix: 16),
+                                        );
+                                      } catch (_) {
+                                        ruleColorVal = _getTajweedColor(ruleName);
+                                      }
                                       
                                       String fullDesc = description;
                                       if (counts > 0) {
@@ -792,7 +816,7 @@ class _ComparisonResultsScreenState extends State<ComparisonResultsScreen> {
                       runSpacing: 12,
                       children: rulesBreakdown.entries.map((entry) {
                         final ruleName = entry.key;
-                        final count = entry.value as int;
+                        final count = (entry.value as num?)?.toInt() ?? 0;
                         
                         return Row(
                           mainAxisSize: MainAxisSize.min,
@@ -974,9 +998,9 @@ class _ComparisonResultsScreenState extends State<ComparisonResultsScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Expanded(
+              flex: 3,
               child: Text(
                 label,
                 style: const TextStyle(
@@ -986,12 +1010,19 @@ class _ComparisonResultsScreenState extends State<ComparisonResultsScreen> {
                 ),
               ),
             ),
-            Text(
-              '${score.toStringAsFixed(1)}% (${weight})',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
-                color: color,
+            const SizedBox(width: 8),
+            Flexible(
+              flex: 2,
+              child: Text(
+                '${score.toStringAsFixed(1)}% ($weight)',
+                textAlign: TextAlign.end,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                ),
               ),
             ),
           ],

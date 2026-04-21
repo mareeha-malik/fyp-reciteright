@@ -169,7 +169,7 @@ class _AudioLessonsScreenState extends State<AudioLessonsScreen> {
         backgroundColor: const Color(0xFF1E4976),
         foregroundColor: Colors.white,
         elevation: 4,
-        shadowColor: const Color(0xFF1E4976).withOpacity(0.3),
+        shadowColor: const Color(0xFF1E4976).withValues(alpha: 0.3),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -328,7 +328,7 @@ class _AudioLessonsScreenState extends State<AudioLessonsScreen> {
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 color: _isRecording
-                    ? Colors.red.withOpacity(0.1)
+                    ? Colors.red.withValues(alpha: 0.1)
                     : Colors.grey[100],
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
@@ -383,7 +383,7 @@ class _AudioLessonsScreenState extends State<AudioLessonsScreen> {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Colors.green.withOpacity(0.1),
+                        color: Colors.green.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(color: Colors.green),
                       ),
@@ -431,7 +431,7 @@ class _AudioLessonsScreenState extends State<AudioLessonsScreen> {
                     child: ListTile(
                       leading: Container(
                         decoration: BoxDecoration(
-                          color: accuracyColor.withOpacity(0.2),
+                          color: accuracyColor.withValues(alpha: 0.2),
                           shape: BoxShape.circle,
                         ),
                         padding: const EdgeInsets.all(8),

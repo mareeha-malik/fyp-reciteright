@@ -89,7 +89,7 @@ class _RecitationScreenState extends State<RecitationScreen> {
         backgroundColor: const Color(0xFF1E4976),
         foregroundColor: Colors.white,
         elevation: 4,
-        shadowColor: const Color(0xFF1E4976).withOpacity(0.3),
+        shadowColor: const Color(0xFF1E4976).withValues(alpha: 0.3),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -103,7 +103,7 @@ class _RecitationScreenState extends State<RecitationScreen> {
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    color: Colors.black.withValues(alpha: 0.05),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
@@ -132,7 +132,7 @@ class _RecitationScreenState extends State<RecitationScreen> {
                   Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF1E4976).withOpacity(0.1),
+                      color: const Color(0xFF1E4976).withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
@@ -155,7 +155,7 @@ class _RecitationScreenState extends State<RecitationScreen> {
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    color: Colors.black.withValues(alpha: 0.05),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
@@ -178,7 +178,7 @@ class _RecitationScreenState extends State<RecitationScreen> {
                         CircleAvatar(
                           radius: 50,
                           backgroundColor:
-                              const Color(0xFF1E4976).withOpacity(0.1),
+                              const Color(0xFF1E4976).withValues(alpha: 0.1),
                           child: const Icon(
                             Icons.mic,
                             size: 50,
@@ -261,7 +261,7 @@ class _RecitationScreenState extends State<RecitationScreen> {
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
+                      color: Colors.black.withValues(alpha: 0.05),
                       blurRadius: 8,
                       offset: const Offset(0, 2),
                     ),

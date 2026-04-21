@@ -1,0 +1,66 @@
+{
+  "id": "5dedca82-b409-41ab-a3d8-2864a560b274",
+  "user_id": "MzsLmBssFObyDySv7k7F5bweEfP2",
+  "surah": 1,
+  "ayah": 1,
+  "mode": "practice",
+  "accuracy_score": 31.2,
+  "whisper_score": 5.0,
+  "mfcc_score": 27.3,
+  "date_time": "2026-04-18T15:17:59.128745Z",
+  "duration_seconds": 29,
+  "mistakes": [
+    {
+      "word": "بِسْمِ",
+      "ayah": 1,
+      "surah": 1,
+      "tajweedRules": [],
+      "errorType": "close",
+      "similarity": 0.8,
+      "occurredAt": "2026-04-18T15:17:57.987521Z"
+    },
+    {
+      "word": "ٱللَّهِ",
+      "ayah": 1,
+      "surah": 1,
+      "tajweedRules": [
+        "Shadda"
+      ],
+      "errorType": "close",
+      "similarity": 0.75,
+      "occurredAt": "2026-04-18T15:17:57.999792Z"
+    },
+    {
+      "word": "ٱلرَّحْمَـٰنِ",
+      "ayah": 1,
+      "surah": 1,
+      "tajweedRules": [
+        "Qalqalah Minor",
+        "Shadda"
+      ],
+      "errorType": "missing",
+      "similarity": 0.0,
+      "occurredAt": "2026-04-18T15:17:58.000034Z"
+    },
+    {
+      "word": "ٱلرَّحِيمِ",
+      "ayah": 1,
+      "surah": 1,
+      "tajweedRules": [
+        "Madd Tabee'i",
+        "Shadda"
+      ],
+      "errorType": "missing",
+      "similarity": 0.0,
+      "occurredAt": "2026-04-18T15:17:58.000171Z"
+    }
+  ],
+  "total_words": 4,
+  "correct_words": 0,
+  "close_words": 2,
+  "missing_words": 2,
+  "extra_words": 0,
+  "reference_audio_url": "https://verses.quran.com/Alafasy/mp3/001001.mp3",
+  "transcribed_text": "بس دسم الله رقماء فيه",
+  "correct_text": "بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ"
+}

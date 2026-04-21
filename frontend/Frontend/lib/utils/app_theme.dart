@@ -9,9 +9,6 @@ class AppTheme {
   static const Color accentColor = Color(0xFFFF6B6B);
   static const Color successColor = Color(0xFF26C281);
   static const Color warningColor = Color(0xFFFFA500);
-
-  static const Color successColor = Colors.green;
-  static const Color warningColor = Colors.orange;
   static const Color errorColor = Colors.red;
   static const Color infoColor = Colors.blue;
 
@@ -30,18 +27,14 @@ class AppTheme {
           backgroundColor: primaryColor,
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: primaryColor,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
@@ -71,7 +64,7 @@ class AppTheme {
   static List<BoxShadow> get cardShadow {
     return [
       BoxShadow(
-        color: Colors.black.withOpacity(0.05),
+        color: Colors.black.withValues(alpha: 0.05),
         blurRadius: 8,
         offset: const Offset(0, 2),
       ),

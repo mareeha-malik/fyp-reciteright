@@ -248,7 +248,7 @@ class _AyatPracticeLessonScreenState extends State<AyatPracticeLessonScreen> {
         backgroundColor: const Color(0xFF1E4976),
         foregroundColor: Colors.white,
         elevation: 4,
-        shadowColor: const Color(0xFF1E4976).withOpacity(0.3),
+        shadowColor: const Color(0xFF1E4976).withValues(alpha: 0.3),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -373,7 +373,7 @@ class _AyatPracticeLessonScreenState extends State<AyatPracticeLessonScreen> {
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
+                      color: Colors.black.withValues(alpha: 0.05),
                       blurRadius: 4,
                     ),
                   ],
@@ -414,7 +414,7 @@ class _AyatPracticeLessonScreenState extends State<AyatPracticeLessonScreen> {
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    color: Colors.black.withValues(alpha: 0.05),
                     blurRadius: 4,
                   ),
                 ],
@@ -473,7 +473,7 @@ class _AyatPracticeLessonScreenState extends State<AyatPracticeLessonScreen> {
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    color: Colors.black.withValues(alpha: 0.05),
                     blurRadius: 4,
                   ),
                 ],
@@ -493,7 +493,7 @@ class _AyatPracticeLessonScreenState extends State<AyatPracticeLessonScreen> {
                       const SizedBox(height: 12),
                       CircleAvatar(
                         radius: 60,
-                        backgroundColor: Colors.red.withOpacity(0.1),
+                        backgroundColor: Colors.red.withValues(alpha: 0.1),
                         child: const Icon(
                           Icons.mic,
                           size: 60,
@@ -594,7 +594,7 @@ class _AyatPracticeLessonScreenState extends State<AyatPracticeLessonScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.amber.withOpacity(0.1),
+                color: Colors.amber.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
                   color: Colors.amber,
@@ -760,7 +760,7 @@ class _ComparisonResultsScreenState extends State<ComparisonResultsScreen> {
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    color: Colors.black.withValues(alpha: 0.05),
                     blurRadius: 8,
                   ),
                 ],
@@ -811,7 +811,7 @@ class _ComparisonResultsScreenState extends State<ComparisonResultsScreen> {
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
+                      color: Colors.black.withValues(alpha: 0.05),
                       blurRadius: 4,
                     ),
                   ],
@@ -1022,7 +1022,7 @@ class _ComparisonResultsScreenState extends State<ComparisonResultsScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.15),
+        color: color.withValues(alpha: 0.15),
         border: Border.all(color: color, width: 1.5),
         borderRadius: BorderRadius.circular(6),
       ),

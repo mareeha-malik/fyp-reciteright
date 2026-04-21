@@ -181,7 +181,7 @@ class _ProfileScreenState extends State<ProfileScreen>
         backgroundColor: const Color(0xFF1E4976),
         foregroundColor: Colors.white,
         elevation: 4,
-        shadowColor: const Color(0xFF1E4976).withOpacity(0.3),
+        shadowColor: const Color(0xFF1E4976).withValues(alpha: 0.3),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -200,7 +200,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                 borderRadius: BorderRadius.circular(24),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF1E4976).withOpacity(0.22),
+                    color: const Color(0xFF1E4976).withValues(alpha: 0.22),
                     blurRadius: 18,
                     offset: const Offset(0, 8),
                   ),
@@ -220,7 +220,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 300),
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.18),
+                                color: Colors.white.withValues(alpha: 0.18),
                                 shape: BoxShape.circle,
                                 border: Border.all(
                                   color: Colors.white,
@@ -228,7 +228,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                                 ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black.withOpacity(0.25),
+                                    color: Colors.black.withValues(alpha: 0.25),
                                     blurRadius: 16,
                                     spreadRadius: 2,
                                   ),
@@ -262,7 +262,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                               shape: BoxShape.circle,
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.3),
+                                  color: Colors.black.withValues(alpha: 0.3),
                                   blurRadius: 8,
                                   offset: const Offset(0, 3),
                                 ),
@@ -308,7 +308,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
+                      color: Colors.white.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
@@ -331,7 +331,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.06),
+                    color: Colors.black.withValues(alpha: 0.06),
                     blurRadius: 12,
                     offset: const Offset(0, 4),
                   ),
@@ -376,7 +376,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.06),
+                    color: Colors.black.withValues(alpha: 0.06),
                     blurRadius: 12,
                     offset: const Offset(0, 4),
                   ),
@@ -403,7 +403,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                     onChanged: (value) {
                       setState(() => _dailyReminderEnabled = value);
                     },
-                    activeColor: const Color(0xFF1E4976),
+                    activeThumbColor: const Color(0xFF1E4976),
                   ),
                   SwitchListTile.adaptive(
                     contentPadding: EdgeInsets.zero,
@@ -413,7 +413,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                     onChanged: (value) {
                       setState(() => _soundFeedbackEnabled = value);
                     },
-                    activeColor: const Color(0xFF1E4976),
+                    activeThumbColor: const Color(0xFF1E4976),
                   ),
                   const SizedBox(height: 6),
                   _actionTile(
@@ -520,7 +520,7 @@ class _ProfileScreenState extends State<ProfileScreen>
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: const Color(0xFF1E4976).withOpacity(0.08),
+              color: const Color(0xFF1E4976).withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(icon, size: 20, color: const Color(0xFF1E4976)),
@@ -568,7 +568,7 @@ class _ProfileScreenState extends State<ProfileScreen>
       leading: Container(
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: const Color(0xFF1E4976).withOpacity(0.08),
+          color: const Color(0xFF1E4976).withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Icon(icon, color: const Color(0xFF1E4976), size: 20),

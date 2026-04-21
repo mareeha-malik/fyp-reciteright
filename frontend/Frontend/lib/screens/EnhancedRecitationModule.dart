@@ -1,14 +1,12 @@
 import 'package:flutter/material.dart';
+import 'dart:math' as math;
 import 'package:tajweed_corrector/services/tajweed_service.dart';
 import 'package:tajweed_corrector/services/recitation_service.dart';
 
 class EnhancedRecitationModule extends StatefulWidget {
   final TajweedLesson lesson;
 
-  const EnhancedRecitationModule({
-    super.key,
-    required this.lesson,
-  });
+  const EnhancedRecitationModule({super.key, required this.lesson});
 
   @override
   State<EnhancedRecitationModule> createState() =>
@@ -29,7 +27,7 @@ class _EnhancedRecitationModuleState extends State<EnhancedRecitationModule> {
   // Surah/Ayah selection
   String? selectedSurah;
   String? selectedAyah;
-  
+
   final List<String> surahs = [
     'Surah Al-Fatiha',
     'Surah Al-Baqarah',
@@ -39,7 +37,15 @@ class _EnhancedRecitationModuleState extends State<EnhancedRecitationModule> {
   ];
 
   final Map<String, List<String>> ayahs = {
-    'Surah Al-Fatiha': ['Ayah 1', 'Ayah 2', 'Ayah 3', 'Ayah 4', 'Ayah 5', 'Ayah 6', 'Ayah 7'],
+    'Surah Al-Fatiha': [
+      'Ayah 1',
+      'Ayah 2',
+      'Ayah 3',
+      'Ayah 4',
+      'Ayah 5',
+      'Ayah 6',
+      'Ayah 7',
+    ],
     'Surah Al-Baqarah': ['Ayah 1-5', 'Ayah 6-10', 'Ayah 11-20', 'Ayah 21-39'],
     'Surah Ali Imran': ['Ayah 1-9', 'Ayah 10-20', 'Ayah 21-30'],
     'Surah An-Nisa': ['Ayah 1-6', 'Ayah 7-14', 'Ayah 15-25'],
@@ -64,7 +70,8 @@ class _EnhancedRecitationModuleState extends State<EnhancedRecitationModule> {
     // Generate realistic waveform data
     waveformData = List.generate(100, (i) {
       double base = 0.3 + (i % 20) / 50;
-      double variation = (i.sin() + (i / 100).cos()) / 3;
+      final angle = i * math.pi / 180;
+      double variation = (math.sin(angle) + math.cos(angle / 2)) / 3;
       return (base + variation).clamp(0.0, 1.0);
     });
   }
@@ -157,7 +164,7 @@ class _EnhancedRecitationModuleState extends State<EnhancedRecitationModule> {
         backgroundColor: const Color(0xFF1E4976),
         foregroundColor: Colors.white,
         elevation: 4,
-        shadowColor: const Color(0xFF1E4976).withOpacity(0.3),
+        shadowColor: const Color(0xFF1E4976).withValues(alpha: 0.3),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -169,8 +176,7 @@ class _EnhancedRecitationModuleState extends State<EnhancedRecitationModule> {
             const SizedBox(height: 24),
 
             // Waveform & Recording Display
-            if (recordingDuration > 0 || isRecording)
-              _buildWaveformCard(),
+            if (recordingDuration > 0 || isRecording) _buildWaveformCard(),
             if (recordingDuration > 0 || isRecording)
               const SizedBox(height: 24),
 
@@ -179,10 +185,8 @@ class _EnhancedRecitationModuleState extends State<EnhancedRecitationModule> {
             const SizedBox(height: 24),
 
             // Accuracy Display
-            if (recordingDuration > 0)
-              _buildAccuracyCard(),
-            if (recordingDuration > 0)
-              const SizedBox(height: 24),
+            if (recordingDuration > 0) _buildAccuracyCard(),
+            if (recordingDuration > 0) const SizedBox(height: 24),
 
             // Notes
             _buildNotesCard(),
@@ -221,7 +225,7 @@ class _EnhancedRecitationModuleState extends State<EnhancedRecitationModule> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -239,12 +243,10 @@ class _EnhancedRecitationModuleState extends State<EnhancedRecitationModule> {
           DropdownButtonFormField<String>(
             value: selectedSurah,
             hint: const Text('Select Surah'),
-            items: surahs.map((surah) {
-              return DropdownMenuItem(
-                value: surah,
-                child: Text(surah),
-              );
-            }).toList(),
+            items:
+                surahs.map((surah) {
+                  return DropdownMenuItem(value: surah, child: Text(surah));
+                }).toList(),
             onChanged: (value) {
               setState(() {
                 selectedSurah = value;
@@ -269,12 +271,10 @@ class _EnhancedRecitationModuleState extends State<EnhancedRecitationModule> {
             DropdownButtonFormField<String>(
               value: selectedAyah,
               hint: const Text('Select Ayah'),
-              items: ayahs[selectedSurah]!.map((ayah) {
-                return DropdownMenuItem(
-                  value: ayah,
-                  child: Text(ayah),
-                );
-              }).toList(),
+              items:
+                  ayahs[selectedSurah]!.map((ayah) {
+                    return DropdownMenuItem(value: ayah, child: Text(ayah));
+                  }).toList(),
               onChanged: (value) {
                 setState(() => selectedAyah = value);
               },
@@ -303,7 +303,7 @@ class _EnhancedRecitationModuleState extends State<EnhancedRecitationModule> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -372,7 +372,7 @@ class _EnhancedRecitationModuleState extends State<EnhancedRecitationModule> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -458,7 +458,7 @@ class _EnhancedRecitationModuleState extends State<EnhancedRecitationModule> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -476,9 +476,16 @@ class _EnhancedRecitationModuleState extends State<EnhancedRecitationModule> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildAccuracyMetric('Accuracy', '${accuracy.toStringAsFixed(1)}%',
-                  accuracy > 80 ? Colors.green : Colors.orange),
-              _buildAccuracyMetric('Duration', '${recordingDuration}s', Colors.blue),
+              _buildAccuracyMetric(
+                'Accuracy',
+                '${accuracy.toStringAsFixed(1)}%',
+                accuracy > 80 ? Colors.green : Colors.orange,
+              ),
+              _buildAccuracyMetric(
+                'Duration',
+                '${recordingDuration}s',
+                Colors.blue,
+              ),
             ],
           ),
         ],
@@ -489,10 +496,7 @@ class _EnhancedRecitationModuleState extends State<EnhancedRecitationModule> {
   Widget _buildAccuracyMetric(String label, String value, Color color) {
     return Column(
       children: [
-        Text(
-          label,
-          style: const TextStyle(fontSize: 12, color: Colors.grey),
-        ),
+        Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
         const SizedBox(height: 4),
         Text(
           value,
@@ -513,7 +517,7 @@ class _EnhancedRecitationModuleState extends State<EnhancedRecitationModule> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -566,10 +570,15 @@ class WaveformPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = const Color(0xFF1E4976)
-      ..strokeWidth = 2
-      ..strokeCap = StrokeCap.round;
+    if (waveformData.isEmpty) {
+      return;
+    }
+
+    final paint =
+        Paint()
+          ..color = const Color(0xFF1E4976)
+          ..strokeWidth = 2
+          ..strokeCap = StrokeCap.round;
 
     final centerY = size.height / 2;
     final barWidth = size.width / waveformData.length;
@@ -590,11 +599,5 @@ class WaveformPainter extends CustomPainter {
   @override
   bool shouldRepaint(WaveformPainter oldDelegate) {
     return oldDelegate.waveformData != waveformData;
-  }
-}
-
-extension on double {
-  double sin() {
-    return (this * 3.14159 / 180).sin();
   }
 }

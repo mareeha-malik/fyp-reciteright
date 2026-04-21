@@ -10,7 +10,7 @@ import 'screens/NewHomeScreen_Gamified.dart'; // ← NEW GAMIFIED HOME SCREEN
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   try {
     await Firebase.initializeApp(
       options: FirebaseOptions(
@@ -48,22 +48,23 @@ Future<void> checkFirebase() async {
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final Stream<User?>? authStateChangesStream;
+
+  const MyApp({super.key, this.authStateChangesStream});
 
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => ThemeService()),
-      ],
+      providers: [ChangeNotifierProvider(create: (_) => ThemeService())],
       child: Consumer<ThemeService>(
         builder: (context, themeService, _) {
           return MaterialApp(
             debugShowCheckedModeBanner: false,
             theme: AppThemes.getLightTheme(),
             darkTheme: AppThemes.getDarkTheme(),
-            themeMode: themeService.isDarkMode ? ThemeMode.dark : ThemeMode.light,
-            home: const AuthWrapper(),
+            themeMode:
+                themeService.isDarkMode ? ThemeMode.dark : ThemeMode.light,
+            home: AuthWrapper(authStateChangesStream: authStateChangesStream),
           );
         },
       ),
@@ -72,12 +73,15 @@ class MyApp extends StatelessWidget {
 }
 
 class AuthWrapper extends StatelessWidget {
-  const AuthWrapper({super.key});
+  final Stream<User?>? authStateChangesStream;
+
+  const AuthWrapper({super.key, this.authStateChangesStream});
 
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<User?>(
-      stream: FirebaseAuth.instance.authStateChanges(),
+      stream:
+          authStateChangesStream ?? FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(

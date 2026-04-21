@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'dart:async';
 import '../services/quran_lesson_service.dart';
 
 class WordByWordWidget extends StatefulWidget {
@@ -17,6 +18,7 @@ class WordByWordWidget extends StatefulWidget {
 
 class _WordByWordWidgetState extends State<WordByWordWidget> {
   late AudioPlayer _audioPlayer;
+  StreamSubscription<PlayerState>? _playerStateSubscription;
   String? _playingWordIndex;
   bool _isLoading = false;
 
@@ -24,16 +26,28 @@ class _WordByWordWidgetState extends State<WordByWordWidget> {
   void initState() {
     super.initState();
     _audioPlayer = AudioPlayer();
+    _playerStateSubscription = _audioPlayer.playerStateStream.listen((playerState) {
+      if (!mounted) return;
+
+      if (playerState.processingState == ProcessingState.completed) {
+        setState(() {
+          _playingWordIndex = null;
+          _isLoading = false;
+        });
+      }
+    });
   }
 
   @override
   void dispose() {
+    _playerStateSubscription?.cancel();
     _audioPlayer.dispose();
     super.dispose();
   }
 
   Future<void> _playAudio(String audioUrl, String index) async {
     try {
+      if (!mounted) return;
       setState(() {
         _playingWordIndex = index;
         _isLoading = true;
@@ -41,20 +55,13 @@ class _WordByWordWidgetState extends State<WordByWordWidget> {
 
       await _audioPlayer.setUrl(audioUrl);
       await _audioPlayer.play();
-
-      _audioPlayer.playerStateStream.listen((playerState) {
-        if (playerState.processingState == ProcessingState.completed) {
-          setState(() {
-            _playingWordIndex = null;
-          });
-        }
-      });
-
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
       });
     } catch (e) {
       // Error playing audio - gracefully handling
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
         _playingWordIndex = null;

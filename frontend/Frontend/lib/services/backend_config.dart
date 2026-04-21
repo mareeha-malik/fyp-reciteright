@@ -7,7 +7,7 @@ import 'package:flutter/foundation.dart';
 class BackendConfig {
   static const String baseUrl = String.fromEnvironment(
     'BACKEND_BASE_URL',
-    defaultValue: 'http://192.168.100.7:8000',
+    defaultValue: 'http://192.168.100.11:8000',
   );
 
   static String compareUrl() =>

@@ -11,7 +11,8 @@ class TajweedLessonsScreen extends StatefulWidget {
 }
 
 class _TajweedLessonsScreenState extends State<TajweedLessonsScreen> {
-  late SharedPreferences _prefs;
+  SharedPreferences? _prefs;
+  bool _isPrefsReady = false;
   int _completedLessonsCount = 0;
 
   @override
@@ -21,23 +22,26 @@ class _TajweedLessonsScreenState extends State<TajweedLessonsScreen> {
   }
 
   Future<void> _loadProgress() async {
-    _prefs = await SharedPreferences.getInstance();
+    final prefs = await SharedPreferences.getInstance();
     int count = 0;
     for (var lesson in lessons) {
-      final isCompleted = _prefs.getBool('lesson_${lesson.id}_completed') ?? false;
+      final isCompleted = prefs.getBool('lesson_${lesson.id}_completed') ?? false;
       if (isCompleted) count++;
     }
+    if (!mounted) return;
     setState(() {
+      _prefs = prefs;
+      _isPrefsReady = true;
       _completedLessonsCount = count;
     });
   }
 
   bool _isLessonCompleted(String lessonId) {
-    return _prefs.getBool('lesson_${lessonId}_completed') ?? false;
+    return _prefs?.getBool('lesson_${lessonId}_completed') ?? false;
   }
 
   int _getLessonScore(String lessonId) {
-    return _prefs.getInt('lesson_${lessonId}_score') ?? 0;
+    return _prefs?.getInt('lesson_${lessonId}_score') ?? 0;
   }
 
   @override
@@ -100,21 +104,27 @@ class _TajweedLessonsScreenState extends State<TajweedLessonsScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: LinearProgressIndicator(
-                      value: _completedLessonsCount / lessons.length,
-                      minHeight: 8,
-                      backgroundColor: Colors.white30,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        Colors.green.withValues(alpha: 0.7),
-                      ),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: LinearProgressIndicator(
+                    value:
+                        lessons.isEmpty ? 0 : (_completedLessonsCount / lessons.length),
+                    minHeight: 8,
+                    backgroundColor: Colors.white30,
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      Colors.green.withValues(alpha: 0.7),
                     ),
                   ),
+                ),
               ],
             ),
           ),
           const SizedBox(height: 24),
+          if (!_isPrefsReady)
+            const Padding(
+              padding: EdgeInsets.only(bottom: 16),
+              child: LinearProgressIndicator(minHeight: 2),
+            ),
           // Lessons list
           ...List.generate(lessons.length, (index) {
             final lesson = lessons[index];

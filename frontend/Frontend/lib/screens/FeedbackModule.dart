@@ -16,7 +16,6 @@ class FeedbackData {
   /// ✨ NEW: Create FeedbackData from API voice comparison response
   factory FeedbackData.fromComparisonResponse(Map<String, dynamic> response) {
     final feedback = response['feedback'] as String? ?? 'Analysis complete.';
-    final metrics = response['metrics'] as Map<String, dynamic>? ?? {};
 
     // Parse feedback string for basic error extraction
     final errors = <FeedbackError>[];
@@ -33,8 +32,7 @@ class FeedbackData {
   /// ✨ NEW: Create FeedbackData from Tajweed prediction response
   factory FeedbackData.fromPredictionResponse(Map<String, dynamic> response) {
     final detectedRules = response['detected_rules'] as List? ?? [];
-    final prediction = response['prediction'] as Map<String, dynamic>? ?? {};
-    
+
     final errors = <FeedbackError>[];
     int position = 0;
 
@@ -50,9 +48,10 @@ class FeedbackData {
       );
     }
 
-    final feedback = detectedRules.isEmpty
-        ? 'Perfect recitation with correct Tajweed application!'
-        : 'Detected ${detectedRules.length} Tajweed rule(s): ${detectedRules.join(", ")}';
+    final feedback =
+        detectedRules.isEmpty
+            ? 'Perfect recitation with correct Tajweed application!'
+            : 'Detected ${detectedRules.length} Tajweed rule(s): ${detectedRules.join(", ")}';
 
     return FeedbackData(
       userText: 'Your Recitation',
@@ -107,7 +106,7 @@ class _FeedbackModuleState extends State<FeedbackModule> {
         backgroundColor: const Color(0xFF1E4976),
         foregroundColor: Colors.white,
         elevation: 4,
-        shadowColor: const Color(0xFF1E4976).withOpacity(0.3),
+        shadowColor: const Color(0xFF1E4976).withValues(alpha: 0.3),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -124,8 +123,7 @@ class _FeedbackModuleState extends State<FeedbackModule> {
 
             // Side-by-Side Comparison
             _buildComparisonToggle(),
-            if (_showComparison)
-              _buildComparisonView(),
+            if (_showComparison) _buildComparisonView(),
             const SizedBox(height: 24),
 
             // Playback Controls
@@ -147,7 +145,7 @@ class _FeedbackModuleState extends State<FeedbackModule> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -191,16 +189,16 @@ class _FeedbackModuleState extends State<FeedbackModule> {
   }
 
   List<Widget> _buildColorCodedWords() {
-    List<Widget> widgets = [];
+    final widgets = <Widget>[];
     final words = widget.feedbackData.userText.split(' ');
 
     for (int i = 0; i < words.length; i++) {
-      final error = widget.feedbackData.errors
-          .firstWhere((e) => e.position == i, orElse: () => null as dynamic);
+      final error = _findErrorAtPosition(i);
 
-      final color = error == null
-          ? Colors.green
-          : error.errorType == 'major'
+      final color =
+          error == null
+              ? Colors.green
+              : error.errorType == 'major'
               ? Colors.red
               : Colors.orange;
 
@@ -208,16 +206,13 @@ class _FeedbackModuleState extends State<FeedbackModule> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.2),
+            color: color.withValues(alpha: 0.2),
             border: Border.all(color: color),
             borderRadius: BorderRadius.circular(6),
           ),
           child: Text(
             words[i],
-            style: TextStyle(
-              color: color,
-              fontWeight: FontWeight.w600,
-            ),
+            style: TextStyle(color: color, fontWeight: FontWeight.w600),
           ),
         ),
       );
@@ -226,30 +221,34 @@ class _FeedbackModuleState extends State<FeedbackModule> {
     return widgets;
   }
 
+  FeedbackError? _findErrorAtPosition(int position) {
+    for (final error in widget.feedbackData.errors) {
+      if (error.position == position) {
+        return error;
+      }
+    }
+    return null;
+  }
+
   Widget _buildLegendItem(String label, Color color) {
     return Row(
       children: [
         Container(
           width: 12,
           height: 12,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-          ),
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
         const SizedBox(width: 6),
-        Text(
-          label,
-          style: const TextStyle(fontSize: 12),
-        ),
+        Text(label, style: const TextStyle(fontSize: 12)),
       ],
     );
   }
 
   Widget _buildErrorDetailsCard() {
-    final errors = widget.feedbackData.errors
-        .where((e) => e.errorType != 'correct')
-        .toList();
+    final errors =
+        widget.feedbackData.errors
+            .where((e) => e.errorType != 'correct')
+            .toList();
 
     return Container(
       decoration: BoxDecoration(
@@ -257,7 +256,7 @@ class _FeedbackModuleState extends State<FeedbackModule> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -315,14 +314,18 @@ class _FeedbackModuleState extends State<FeedbackModule> {
                   child: Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: error.errorType == 'major'
-                          ? Colors.red.withOpacity(0.1)
-                          : Colors.orange.withOpacity(0.1),
-                      border: Border.left(
-                        color: error.errorType == 'major'
-                            ? Colors.red
-                            : Colors.orange,
-                        width: 4,
+                      color:
+                          error.errorType == 'major'
+                              ? Colors.red.withValues(alpha: 0.1)
+                              : Colors.orange.withValues(alpha: 0.1),
+                      border: Border(
+                        left: BorderSide(
+                          color:
+                              error.errorType == 'major'
+                                  ? Colors.red
+                                  : Colors.orange,
+                          width: 4,
+                        ),
                       ),
                       borderRadius: BorderRadius.circular(6),
                     ),
@@ -336,9 +339,10 @@ class _FeedbackModuleState extends State<FeedbackModule> {
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.bold,
-                                color: error.errorType == 'major'
-                                    ? Colors.red
-                                    : Colors.orange,
+                                color:
+                                    error.errorType == 'major'
+                                        ? Colors.red
+                                        : Colors.orange,
                               ),
                             ),
                             const SizedBox(width: 8),
@@ -398,7 +402,7 @@ class _FeedbackModuleState extends State<FeedbackModule> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -440,10 +444,7 @@ class _FeedbackModuleState extends State<FeedbackModule> {
                   ),
                   child: Text(
                     widget.feedbackData.userText,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      height: 1.6,
-                    ),
+                    style: const TextStyle(fontSize: 12, height: 1.6),
                   ),
                 ),
               ),
@@ -452,7 +453,7 @@ class _FeedbackModuleState extends State<FeedbackModule> {
                 child: Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.green.withOpacity(0.1),
+                    color: Colors.green.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: Colors.green),
                   ),
@@ -481,7 +482,7 @@ class _FeedbackModuleState extends State<FeedbackModule> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -547,7 +548,7 @@ class _FeedbackModuleState extends State<FeedbackModule> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -565,7 +566,7 @@ class _FeedbackModuleState extends State<FeedbackModule> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.blue.withOpacity(0.1),
+              color: Colors.blue.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: Colors.blue),
             ),
@@ -582,7 +583,7 @@ class _FeedbackModuleState extends State<FeedbackModule> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.orange.withOpacity(0.1),
+              color: Colors.orange.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: Colors.orange),
             ),

@@ -67,25 +67,56 @@ class ApiService {
       print('   Reference URL: $referenceAudioUrl');
       print('   User audio size: ${userAudioBytes.length} bytes');
 
-      // Send POST request to /api/compare
-      final response = await _dio.post(
-        '/api/compare',
-        data: requestData,
-      );
+      // Primary path: multipart (matches backend /api/compare used in main app flow).
+      Response<dynamic> response;
+      try {
+        final multipartData = FormData.fromMap({
+          'surah': surahNumber.toString(),
+          'ayah': verseNumber.toString(),
+          'reference_audio_url': referenceAudioUrl,
+          'filename': 'user_recording.wav',
+          'audio': MultipartFile.fromBytes(
+            userAudioBytes,
+            filename: 'user_recording.wav',
+          ),
+        });
+
+        response = await _dio.post(
+          '/api/compare',
+          data: multipartData,
+          options: Options(contentType: 'multipart/form-data'),
+        );
+      } on DioException catch (e) {
+        // Fallback path for deployments expecting JSON/base64 payload.
+        final code = e.response?.statusCode ?? 0;
+        if (code == 400 || code == 404 || code == 415 || code == 422) {
+          response = await _dio.post('/api/compare', data: requestData);
+        } else {
+          rethrow;
+        }
+      }
 
       if (response.statusCode == 200) {
         print('✅ Comparison successful!');
         
         // Extract and validate response data
-        final result = response.data as Map<String, dynamic>;
+        final dynamic raw = response.data;
+        final Map<String, dynamic> result =
+            raw is Map<String, dynamic>
+                ? raw
+                : (raw is Map)
+                ? raw.cast<String, dynamic>()
+                : (raw is String)
+                ? (jsonDecode(raw) as Map<String, dynamic>)
+                : <String, dynamic>{};
         
         if (result['success'] != true) {
           throw Exception('Backend returned success: false');
         }
 
         // Log results
-        final overallScore = result['overall_score'] ?? 0.0;
-        final grade = result['grade'] ?? 'Unknown';
+        final overallScore = (result['overall_score'] as num?)?.toDouble() ?? 0.0;
+        final grade = result['grade']?.toString() ?? 'Unknown';
         print('   Overall Score: ${overallScore.toStringAsFixed(1)}%');
         print('   Grade: $grade');
         print('   DTW Distance: ${result['dtw_distance']}');
@@ -100,6 +131,10 @@ class ApiService {
         throw Exception('Connection timeout - make sure backend server is running at $_baseUrl');
       } else if (e.type == DioExceptionType.receiveTimeout) {
         throw Exception('Request timeout - comparison took too long');
+      } else if (e.type == DioExceptionType.connectionError) {
+        throw Exception(
+          'Cannot reach backend at $_baseUrl (No route to host). Check phone and backend are on same network, or run with --dart-define=BACKEND_BASE_URL=http://<your-ip>:8000',
+        );
       } else if (e.response != null) {
         final errorMsg = e.response?.data ?? e.message;
         throw Exception('Backend error: $errorMsg');

@@ -231,7 +231,6 @@ class _RealProgressScreenState extends State<RealProgressScreen> {
                     CircularProgressIndicator(
                       value: completion,
                       strokeWidth: 8,
-                      minRadius: 70,
                       backgroundColor: Colors.grey[300],
                       valueColor: AlwaysStoppedAnimation<Color>(
                         completion >= 1.0 ? Colors.green : Colors.blue,
@@ -475,7 +474,8 @@ class _RealProgressScreenState extends State<RealProgressScreen> {
       children: List.generate(
         7,
         (index) {
-          final dayData = dailyBreakdown[index];
+          final dayData =
+              index < dailyBreakdown.length ? dailyBreakdown[index] : <String, dynamic>{};
           final minutes = (dayData['minutes'] as num?)?.toDouble() ?? 0.0;
           final height = (minutes / (maxMinutes > 0 ? maxMinutes : 10)) * 120;
 

@@ -48,7 +48,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
         backgroundColor: const Color(0xFF1E4976),
         foregroundColor: Colors.white,
         elevation: 4,
-        shadowColor: const Color(0xFF1E4976).withOpacity(0.3),
+        shadowColor: const Color(0xFF1E4976).withValues(alpha: 0.3),
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -64,7 +64,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
+                          color: Colors.black.withValues(alpha: 0.05),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),
@@ -153,7 +153,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
                             borderRadius: BorderRadius.circular(12),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.05),
+                                color: Colors.black.withValues(alpha: 0.05),
                                 blurRadius: 8,
                                 offset: const Offset(0, 2),
                               ),
@@ -198,7 +198,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
                                     decoration: BoxDecoration(
                                       color: _getAccuracyColor(
                                               recitation.accuracy)
-                                          .withOpacity(0.2),
+                                          .withValues(alpha: 0.2),
                                       borderRadius:
                                           BorderRadius.circular(20),
                                     ),

@@ -1,0 +1,11 @@
+7) Very short viva answers you can memorize
+DTW
+DTW means Dynamic Time Warping. It compares two audio sequences even if one is recited faster or slower, so it is useful for matching user recitation with the reference qari.
+Faster-Whisper
+Faster-Whisper is the speech-to-text model we use to transcribe the user’s Arabic recitation into text before comparison.
+Phoneme
+A phoneme is the smallest sound unit of a language. We use phoneme-level comparison to check pronunciation accuracy.
+Tajweed
+Tajweed is the set of rules for correct Quran recitation, including pronunciation, elongation, nasalization, stopping, and merging rules.
+Number of Tajweed rules
+Our project detects 9 main Tajweed rule families, and some of them are further divided into detailed sub-rules.

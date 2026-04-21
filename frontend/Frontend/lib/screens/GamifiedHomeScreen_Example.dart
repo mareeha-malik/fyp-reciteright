@@ -1,13 +1,11 @@
 /// Example Integration of Gamification into ReciteRight Home Screen
-/// 
+///
 /// This file shows how to use the gamification metrics in actual UI widgets
 /// Adapt these examples to match your existing home screen design
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:tajweed_corrector/models/gamification_models.dart';
-import 'package:tajweed_corrector/services/gamification_service.dart';
 import 'package:tajweed_corrector/services/gamification_notifier.dart';
 
 // ════════════════════════════════════════════════════════════════════════════════
@@ -17,7 +15,7 @@ import 'package:tajweed_corrector/services/gamification_notifier.dart';
 class HomeHeroCard extends StatelessWidget {
   final GamificationNotifier notifier;
 
-  const HomeHeroCard({required this.notifier});
+  const HomeHeroCard({super.key, required this.notifier});
 
   @override
   Widget build(BuildContext context) {
@@ -35,13 +33,10 @@ class HomeHeroCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            notifier.getHeroEmoji(),
-            style: const TextStyle(fontSize: 48),
-          ),
+          Text(notifier.getHeroEmoji(), style: const TextStyle(fontSize: 48)),
           const SizedBox(height: 16),
           Text(
-            'Welcome back!' if !notifier.isNewUser else 'Start Learning Quran',
+            notifier.isNewUser ? 'Start Learning Quran' : 'Welcome back!',
             style: const TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
@@ -51,10 +46,7 @@ class HomeHeroCard extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             notifier.getHeroSubtitle(),
-            style: const TextStyle(
-              fontSize: 16,
-              color: Colors.white70,
-            ),
+            style: const TextStyle(fontSize: 16, color: Colors.white70),
           ),
           const SizedBox(height: 16),
           ElevatedButton.icon(
@@ -83,7 +75,7 @@ class HomeHeroCard extends StatelessWidget {
 class DailyProgressRing extends StatelessWidget {
   final GamificationNotifier notifier;
 
-  const DailyProgressRing({required this.notifier});
+  const DailyProgressRing({super.key, required this.notifier});
 
   @override
   Widget build(BuildContext context) {
@@ -129,10 +121,7 @@ class DailyProgressRing extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       '${notifier.dailyMinutes}/${notifier.dailyGoal} min',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[600],
-                      ),
+                      style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                     ),
                   ],
                 ),
@@ -143,17 +132,19 @@ class DailyProgressRing extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: notifier.dailyStatus == 'completed'
-                    ? Colors.green[50]
-                    : Colors.blue[50],
+                color:
+                    notifier.dailyStatus == 'completed'
+                        ? Colors.green[50]
+                        : Colors.blue[50],
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
                 notifier.getDailyStatusMessage(),
                 style: TextStyle(
-                  color: notifier.dailyStatus == 'completed'
-                      ? Colors.green[700]
-                      : Colors.blue[700],
+                  color:
+                      notifier.dailyStatus == 'completed'
+                          ? Colors.green[700]
+                          : Colors.blue[700],
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -172,7 +163,7 @@ class DailyProgressRing extends StatelessWidget {
 class StreakPill extends StatelessWidget {
   final GamificationNotifier notifier;
 
-  const StreakPill({required this.notifier});
+  const StreakPill({super.key, required this.notifier});
 
   @override
   Widget build(BuildContext context) {
@@ -216,7 +207,7 @@ class StreakPill extends StatelessWidget {
 class LevelCard extends StatelessWidget {
   final GamificationNotifier notifier;
 
-  const LevelCard({required this.notifier});
+  const LevelCard({super.key, required this.notifier});
 
   @override
   Widget build(BuildContext context) {
@@ -243,17 +234,16 @@ class LevelCard extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       'Consistent Reciter', // Get from LEVEL_TITLES
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[600],
-                      ),
+                      style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                     ),
                   ],
                 ),
                 // XP badge
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.purple[50],
                     borderRadius: BorderRadius.circular(8),
@@ -303,11 +293,14 @@ class LevelCard extends StatelessWidget {
 class WeeklyChart extends StatelessWidget {
   final GamificationNotifier notifier;
 
-  const WeeklyChart({required this.notifier});
+  const WeeklyChart({super.key, required this.notifier});
 
   @override
   Widget build(BuildContext context) {
-    final dailyBreakdown = notifier.metrics?.week['dailyBreakdown'] ?? [];
+    final week = notifier.metrics?.week;
+    final dailyBreakdown = (week?['dailyBreakdown'] as List?) ?? const [];
+    final weekMinutes = (week?['totalMinutes'] as num?)?.toInt() ?? 0;
+    final weekDaysActive = (week?['daysActive'] as num?)?.toInt() ?? 0;
 
     // Convert to chart data
     List<BarChartGroupData> barGroups = [];
@@ -323,7 +316,9 @@ class WeeklyChart extends StatelessWidget {
               toY: minutes,
               color: minutes > 0 ? Colors.blue : Colors.grey[200],
               width: 12,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(4),
+              ),
             ),
           ],
         ),
@@ -337,13 +332,10 @@ class WeeklyChart extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'This Week',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
+            Text('This Week', style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 8),
             Text(
-              '${notifier.weekMinutes} minutes • ${notifier.weekDaysActive} days active',
+              '$weekMinutes minutes • $weekDaysActive days active',
               style: TextStyle(fontSize: 14, color: Colors.grey[600]),
             ),
             const SizedBox(height: 16),
@@ -360,7 +352,15 @@ class WeeklyChart extends StatelessWidget {
                       sideTitles: SideTitles(
                         showTitles: true,
                         getTitlesWidget: (value, meta) {
-                          const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+                          const weekDays = [
+                            'Mon',
+                            'Tue',
+                            'Wed',
+                            'Thu',
+                            'Fri',
+                            'Sat',
+                            'Sun',
+                          ];
                           return Text(
                             weekDays[value.toInt() % 7],
                             style: const TextStyle(fontSize: 12),
@@ -387,10 +387,7 @@ class WeeklyChart extends StatelessWidget {
   }
 
   static Widget _getTitleWidget(double value, TitleMeta meta) {
-    return Text(
-      '${value.toInt()}',
-      style: const TextStyle(fontSize: 12),
-    );
+    return Text('${value.toInt()}', style: const TextStyle(fontSize: 12));
   }
 }
 
@@ -401,7 +398,7 @@ class WeeklyChart extends StatelessWidget {
 class TopSurahsList extends StatelessWidget {
   final GamificationNotifier notifier;
 
-  const TopSurahsList({required this.notifier});
+  const TopSurahsList({super.key, required this.notifier});
 
   @override
   Widget build(BuildContext context) {
@@ -443,7 +440,10 @@ class TopSurahsList extends StatelessWidget {
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.blue[50],
                     borderRadius: BorderRadius.circular(12),
@@ -476,11 +476,16 @@ class TopSurahsList extends StatelessWidget {
                             children: [
                               Text(
                                 surah['surahName'] ?? 'Surah',
-                                style: const TextStyle(fontWeight: FontWeight.w500),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
                               Text(
                                 '${surah['ayahCountMemorized']}/${surah['totalAyahs']} ayahs',
-                                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[600],
+                                ),
                               ),
                             ],
                           ),
@@ -517,7 +522,7 @@ class TopSurahsList extends StatelessWidget {
 class MilestoneDialog extends StatelessWidget {
   final Map<String, dynamic> milestone;
 
-  const MilestoneDialog({required this.milestone});
+  const MilestoneDialog({super.key, required this.milestone});
 
   @override
   Widget build(BuildContext context) {
@@ -535,19 +540,13 @@ class MilestoneDialog extends StatelessWidget {
             const SizedBox(height: 16),
             Text(
               milestone['title'] as String? ?? 'Achievement Unlocked!',
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
             Text(
               milestone['message'] as String? ?? 'Great job!',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[600],
-              ),
+              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
@@ -569,7 +568,7 @@ class MilestoneDialog extends StatelessWidget {
 class GamifiedHomeScreenExample extends StatefulWidget {
   final String userId;
 
-  const GamifiedHomeScreenExample({required this.userId});
+  const GamifiedHomeScreenExample({super.key, required this.userId});
 
   @override
   State<GamifiedHomeScreenExample> createState() =>
@@ -582,25 +581,18 @@ class _GamifiedHomeScreenExampleState extends State<GamifiedHomeScreenExample> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // Fetch metrics when screen loads
-      context
-          .read<GamificationNotifier>()
-          .fetchMetrics(userId: widget.userId);
+      context.read<GamificationNotifier>().fetchMetrics(userId: widget.userId);
     });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('ReciteRight'),
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: const Text('ReciteRight'), centerTitle: true),
       body: Consumer<GamificationNotifier>(
         builder: (context, notifier, _) {
           if (notifier.isLoading) {
-            return const Center(
-              child: CircularProgressIndicator(),
-            );
+            return const Center(child: CircularProgressIndicator());
           }
 
           if (notifier.error != null) {
@@ -627,9 +619,7 @@ class _GamifiedHomeScreenExampleState extends State<GamifiedHomeScreenExample> {
           }
 
           if (!notifier.hasData) {
-            return const Center(
-              child: Text('No data available'),
-            );
+            return const Center(child: Text('No data available'));
           }
 
           // Check for milestone and show celebration
@@ -644,10 +634,11 @@ class _GamifiedHomeScreenExampleState extends State<GamifiedHomeScreenExample> {
           });
 
           return RefreshIndicator(
-            onRefresh: () => notifier.fetchMetrics(
-              userId: widget.userId,
-              forceRefresh: true,
-            ),
+            onRefresh:
+                () => notifier.fetchMetrics(
+                  userId: widget.userId,
+                  forceRefresh: true,
+                ),
             child: ListView(
               children: [
                 // Hero section
@@ -680,7 +671,7 @@ class _GamifiedHomeScreenExampleState extends State<GamifiedHomeScreenExample> {
 
 // ════════════════════════════════════════════════════════════════════════════════
 // Usage in main.dart:
-// 
+//
 // runApp(
 //   MultiProvider(
 //     providers: [
@@ -698,4 +689,3 @@ class _GamifiedHomeScreenExampleState extends State<GamifiedHomeScreenExample> {
 // Then in your home screen:
 // home: GamifiedHomeScreenExample(userId: "user123"),
 // ════════════════════════════════════════════════════════════════════════════════
-

@@ -76,7 +76,7 @@ class _EnhancedStatsScreenState extends State<EnhancedStatsScreen> {
         backgroundColor: const Color(0xFF1E4976),
         foregroundColor: Colors.white,
         elevation: 4,
-        shadowColor: const Color(0xFF1E4976).withOpacity(0.3),
+        shadowColor: const Color(0xFF1E4976).withValues(alpha: 0.3),
       ),
       body: _isLoading
           ? Center(
@@ -204,7 +204,7 @@ class _EnhancedStatsScreenState extends State<EnhancedStatsScreen> {
                           decoration: BoxDecoration(
                             color: isToday
                                 ? const Color(0xFF1E4976)
-                                : const Color(0xFF2E5F8F).withOpacity(0.4),
+                                : const Color(0xFF2E5F8F).withValues(alpha: 0.4),
                             borderRadius: BorderRadius.circular(4),
                           ),
                         ),
@@ -287,7 +287,7 @@ class _EnhancedStatsScreenState extends State<EnhancedStatsScreen> {
                           decoration: BoxDecoration(
                             color: isToday
                                 ? const Color(0xFF26C281)
-                                : const Color(0xFF26C281).withOpacity(0.4),
+                                : const Color(0xFF26C281).withValues(alpha: 0.4),
                             borderRadius: BorderRadius.circular(4),
                           ),
                         ),
@@ -368,7 +368,7 @@ class _EnhancedStatsScreenState extends State<EnhancedStatsScreen> {
         Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
+            color: color.withValues(alpha: 0.1),
             shape: BoxShape.circle,
           ),
           child: Icon(icon, color: color, size: 20),
