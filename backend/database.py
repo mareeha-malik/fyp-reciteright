@@ -28,7 +28,9 @@ class Database:
 
     def get_user(self, user_id: str) -> Optional[Dict[str, Any]]:
         """Get user profile"""
-        filepath = os.path.join(self.users_dir, f"{user_id}.json")
+        import re
+        safe_id = re.sub(r'[\\/*?:"<>|\r\n]', '_', str(user_id)).strip()
+        filepath = os.path.join(self.users_dir, f"{safe_id}.json")
         if os.path.exists(filepath):
             with open(filepath, 'r', encoding='utf-8') as f:
                 return json.load(f)
@@ -36,7 +38,9 @@ class Database:
 
     def save_user(self, user_id: str, user_data: Dict[str, Any]) -> None:
         """Save user profile"""
-        filepath = os.path.join(self.users_dir, f"{user_id}.json")
+        import re
+        safe_id = re.sub(r'[\\/*?:"<>|\r\n]', '_', str(user_id)).strip()
+        filepath = os.path.join(self.users_dir, f"{safe_id}.json")
         with open(filepath, 'w', encoding='utf-8') as f:
             json.dump(user_data, f, indent=2, ensure_ascii=False)
 
@@ -85,16 +89,16 @@ class Database:
     # SESSION OPERATIONS
     # ═══════════════════════════════════════════════════════════════════════════
 
-    def save_session(self, user_id: str, session_data: Dict[str, Any]) -> None:
-        """Save a session"""
-        user_sessions_dir = os.path.join(self.sessions_dir, user_id)
-        os.makedirs(user_sessions_dir, exist_ok=True)
+    def save_session(self, user_id: str, session: Dict[str, Any]) -> None:
+        """Save a new session"""
+        import re
+        safe_id = re.sub(r'[\\/*?:"<>|\r\n]', '_', str(user_id)).strip()
+        sessions = self.get_user_sessions(safe_id, limit=999)
+        sessions.append(session)
 
-        session_id = session_data.get("id")
-        filepath = os.path.join(user_sessions_dir, f"{session_id}.json")
-
+        filepath = os.path.join(self.sessions_dir, f"{safe_id}.json")
         with open(filepath, 'w', encoding='utf-8') as f:
-            json.dump(session_data, f, indent=2, ensure_ascii=False)
+            json.dump(sessions, f, indent=2, ensure_ascii=False)
 
     def get_session(self, user_id: str, session_id: str) -> Optional[Dict[str, Any]]:
         """Get a specific session"""
@@ -104,23 +108,16 @@ class Database:
                 return json.load(f)
         return None
 
-    def get_user_sessions(self, user_id: str) -> List[Dict[str, Any]]:
-        """Get all sessions for a user"""
-        user_sessions_dir = os.path.join(self.sessions_dir, user_id)
-
-        if not os.path.exists(user_sessions_dir):
+    def get_user_sessions(self, user_id: str, limit: int = 50) -> List[Dict[str, Any]]:
+        """Get recent sessions for user"""
+        import re
+        safe_id = re.sub(r'[\\/*?:"<>|\r\n]', '_', str(user_id)).strip()
+        filepath = os.path.join(self.sessions_dir, f"{safe_id}.json")
+        if not os.path.exists(filepath):
             return []
 
-        sessions = []
-        for filename in os.listdir(user_sessions_dir):
-            if filename.endswith('.json'):
-                filepath = os.path.join(user_sessions_dir, filename)
-                with open(filepath, 'r', encoding='utf-8') as f:
-                    sessions.append(json.load(f))
-
-        # Sort by created_at descending
-        sessions.sort(key=lambda s: s.get("created_at", ""), reverse=True)
-        return sessions
+        with open(filepath, 'r', encoding='utf-8') as f:
+            return json.load(f)[:limit]
 
     def get_sessions_by_date(self, user_id: str, date: str) -> List[Dict[str, Any]]:
         """Get sessions for a specific date (YYYY-MM-DD)"""

@@ -12,8 +12,8 @@ python app.py
 # Expected output (wait for this):
 # 🔄 Model load ho raha hai...
 # ✅ Model ready! 80 reference ayaat loaded.
-# 🔄 Loading Faster-Whisper model...
-# ✅ Faster-Whisper model loaded!
+# 🔄 Loading OpenAI Whisper model (large-v3-turbo) on cpu/cuda...
+# ✅ OpenAI Whisper model loaded!
 # * Running on http://0.0.0.0:8000
 # * Running on http://127.0.0.1:8000
 # Press CTRL+C to quit
@@ -126,7 +126,7 @@ flutter run
 
 # Backend:
 #   F:\ReciteRight\backend\app.py (787 lines)
-#   Dependencies: Flask, librosa, faster-whisper, scikit-learn
+#   Dependencies: Flask, librosa, openai-whisper, scikit-learn
 #
 # Frontend:
 #   F:\ReciteRight\frontend\Frontend\lib\main.dart (entry point)
@@ -233,7 +233,7 @@ flutter run
 
 # [ ] Backend starts without errors
 # [ ] All 80 reference ayaat loaded
-# [ ] Faster-Whisper model loads
+# [ ] OpenAI Whisper (large-v3-turbo) model loads from C:\Users\hp\.cache\whisper\large-v3-turbo.pt
 # [ ] Flutter dependencies resolve
 # [ ] App builds without compilation errors
 # [ ] Phone connects via USB

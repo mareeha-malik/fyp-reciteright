@@ -1,0 +1,31 @@
+{
+  "id": "837e4232-14c9-4fe2-91c1-72b26c58149f",
+  "user_id": "NeJxawwRSfbWJvljPI2e4BctRff2",
+  "surah": 2,
+  "ayah": 2,
+  "mode": "practice",
+  "accuracy_score": 41.4,
+  "whisper_score": 97.9,
+  "mfcc_score": 0.0,
+  "date_time": "2026-04-27T06:53:33.558059Z",
+  "duration_seconds": 47,
+  "mistakes": [
+    {
+      "word": "ٱلْكِتَـبُ",
+      "ayah": 2,
+      "surah": 2,
+      "tajweedRules": [],
+      "errorType": "close",
+      "similarity": 0.73,
+      "occurredAt": "2026-04-27T06:53:14.319302Z"
+    }
+  ],
+  "total_words": 7,
+  "correct_words": 6,
+  "close_words": 1,
+  "missing_words": 0,
+  "extra_words": 0,
+  "reference_audio_url": "https://verses.quran.com/Alafasy/mp3/002002.mp3",
+  "transcribed_text": "ذَٰلِكَ الْكِتَابُ لَا رَيْبَ فِيهِ ۗ هُدًى لِلْمُتّقِينَ",
+  "correct_text": "ذَلِكَ ٱلْكِتَـبُ لَا رَيْبَ فِيهِ هُدًى لِّلْمُتَّقِينَ"
+}

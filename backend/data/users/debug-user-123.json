@@ -1,0 +1,13 @@
+{
+  "id": "debug-user-123",
+  "name": "User debug-us",
+  "email": "debug-user-123@example.com",
+  "joined_at": "2026-04-27T02:53:01.661844Z",
+  "daily_goal_minutes": 10,
+  "daily_goal_ayahs": 0,
+  "level": 1,
+  "xp": 0,
+  "longest_streak": 0,
+  "avatar_url": null,
+  "timezone_offset": 0
+}

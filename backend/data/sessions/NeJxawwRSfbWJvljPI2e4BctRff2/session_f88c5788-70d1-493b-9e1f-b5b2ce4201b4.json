@@ -1,0 +1,93 @@
+{
+  "id": "f88c5788-70d1-493b-9e1f-b5b2ce4201b4",
+  "user_id": "NeJxawwRSfbWJvljPI2e4BctRff2",
+  "surah": 1,
+  "ayah": 7,
+  "mode": "practice",
+  "accuracy_score": 40.0,
+  "whisper_score": 11.7,
+  "mfcc_score": 43.0,
+  "date_time": "2026-04-27T03:02:57.943191Z",
+  "duration_seconds": 41,
+  "mistakes": [
+    {
+      "word": "صِرَٰطَ",
+      "ayah": 7,
+      "surah": 1,
+      "tajweedRules": [
+        "Tafkhim"
+      ],
+      "errorType": "missing",
+      "similarity": 0.0,
+      "occurredAt": "2026-04-27T03:02:38.863169Z"
+    },
+    {
+      "word": "ٱلَّذِينَ",
+      "ayah": 7,
+      "surah": 1,
+      "tajweedRules": [
+        "Madd Tabee'i",
+        "Shadda"
+      ],
+      "errorType": "close",
+      "similarity": 0.8,
+      "occurredAt": "2026-04-27T03:02:38.866356Z"
+    },
+    {
+      "word": "أَنْعَمْتَ",
+      "ayah": 7,
+      "surah": 1,
+      "tajweedRules": [
+        "Izhar",
+        "Izhar Shafawi"
+      ],
+      "errorType": "close",
+      "similarity": 0.6,
+      "occurredAt": "2026-04-27T03:02:38.866475Z"
+    },
+    {
+      "word": "ٱلْمَغْضُوبِ",
+      "ayah": 7,
+      "surah": 1,
+      "tajweedRules": [
+        "Madd Tabee'i",
+        "Tafkhim"
+      ],
+      "errorType": "close",
+      "similarity": 0.86,
+      "occurredAt": "2026-04-27T03:02:38.866528Z"
+    },
+    {
+      "word": "وَلَا",
+      "ayah": 7,
+      "surah": 1,
+      "tajweedRules": [
+        "Madd Tabee'i"
+      ],
+      "errorType": "missing",
+      "similarity": 0.0,
+      "occurredAt": "2026-04-27T03:02:38.866575Z"
+    },
+    {
+      "word": "ٱلضَّآلِّينَ",
+      "ayah": 7,
+      "surah": 1,
+      "tajweedRules": [
+        "Madd Tabee'i",
+        "Shadda",
+        "Tafkhim"
+      ],
+      "errorType": "missing",
+      "similarity": 0.0,
+      "occurredAt": "2026-04-27T03:02:38.866630Z"
+    }
+  ],
+  "total_words": 9,
+  "correct_words": 3,
+  "close_words": 3,
+  "missing_words": 3,
+  "extra_words": 0,
+  "reference_audio_url": "https://verses.quran.com/Alafasy/mp3/001007.mp3",
+  "transcribed_text": "سرات الذين عنامت عليهم غير المغضوب عليهم غلطان",
+  "correct_text": "صِرَٰطَ ٱلَّذِينَ أَنْعَمْتَ عَلَيْهِمْ غَيْرِ ٱلْمَغْضُوبِ عَلَيْهِمْ وَلَا ٱلضَّآلِّينَ"
+}

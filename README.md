@@ -165,7 +165,7 @@ Done! System is running.
 ## 📊 WHAT'S INCLUDED
 
 ### Backend
-- ✅ Faster-Whisper transcription
+- ✅ OpenAI Whisper transcription (`large-v3-turbo`)
 - ✅ 9 Tajweed rules detection
 - ✅ Word-by-word comparison
 - ✅ Hybrid scoring

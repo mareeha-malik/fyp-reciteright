@@ -1,0 +1,44 @@
+{
+  "id": "d6a7cda8-6a9e-468c-a778-c1a66cfc789d",
+  "user_id": "NeJxawwRSfbWJvljPI2e4BctRff2",
+  "surah": 1,
+  "ayah": 2,
+  "mode": "practice",
+  "accuracy_score": 31.9,
+  "whisper_score": 92.5,
+  "mfcc_score": 0.0,
+  "date_time": "2026-04-27T06:51:15.949798Z",
+  "duration_seconds": 45,
+  "mistakes": [
+    {
+      "word": "ٱلْحَمْدُ",
+      "ayah": 2,
+      "surah": 1,
+      "tajweedRules": [
+        "Izhar Shafawi"
+      ],
+      "errorType": "close",
+      "similarity": 0.44,
+      "occurredAt": "2026-04-27T06:50:56.706968Z"
+    },
+    {
+      "word": "ٱلْعَـلَمِينَ",
+      "ayah": 2,
+      "surah": 1,
+      "tajweedRules": [
+        "Madd Tabee'i"
+      ],
+      "errorType": "close",
+      "similarity": 0.8,
+      "occurredAt": "2026-04-27T06:50:56.707196Z"
+    }
+  ],
+  "total_words": 4,
+  "correct_words": 2,
+  "close_words": 2,
+  "missing_words": 0,
+  "extra_words": 0,
+  "reference_audio_url": "https://verses.quran.com/Alafasy/mp3/001002.mp3",
+  "transcribed_text": "الحق لله رب العالمين",
+  "correct_text": "ٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَـلَمِينَ"
+}

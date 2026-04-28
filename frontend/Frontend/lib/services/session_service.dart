@@ -3,22 +3,23 @@ import 'package:flutter/foundation.dart';
 import 'package:tajweed_corrector/models/memorization_item.dart';
 import 'package:tajweed_corrector/models/memorization_summary.dart';
 import 'package:tajweed_corrector/models/session_models.dart';
+import 'package:tajweed_corrector/services/backend_config.dart';
 
 /// Service for session and progress data
 class SessionService {
   final Dio _dio;
-  static const String _baseUrl = String.fromEnvironment(
-    'BACKEND_BASE_URL',
-    defaultValue: 'http://192.168.100.11:8000',
-  );
+  static const String _baseUrl = BackendConfig.baseUrl;
 
   SessionService({Dio? dio})
       : _dio = dio ??
             Dio(BaseOptions(
               baseUrl: _baseUrl,
-              connectTimeout: const Duration(seconds: 30),
-              receiveTimeout: const Duration(seconds: 30),
-            ));
+              connectTimeout: const Duration(seconds: 60),
+              receiveTimeout: const Duration(seconds: 180),
+              sendTimeout: const Duration(seconds: 60),
+            )) {
+    BackendConfig.debugPrintConfig();
+  }
 
   /// Save a recitation session with mistakes
   Future<Map<String, dynamic>> saveSession({

@@ -1,0 +1,244 @@
+{
+  "id": "c5e71415-7079-4ee1-87db-a421d2ba6a9d",
+  "user_id": "NeJxawwRSfbWJvljPI2e4BctRff2",
+  "surah": 4,
+  "ayah": 1,
+  "mode": "practice",
+  "accuracy_score": 38.8,
+  "whisper_score": 0.0,
+  "mfcc_score": 30.3,
+  "date_time": "2026-04-27T03:05:44.170869Z",
+  "duration_seconds": 34,
+  "mistakes": [
+    {
+      "word": "يَـٰٓأَيُّهَا",
+      "ayah": 1,
+      "surah": 4,
+      "tajweedRules": [
+        "Madd Tabee'i",
+        "Shadda"
+      ],
+      "errorType": "close",
+      "similarity": 0.89,
+      "occurredAt": "2026-04-27T03:05:25.429093Z"
+    },
+    {
+      "word": "ٱلنَّاسُ",
+      "ayah": 1,
+      "surah": 4,
+      "tajweedRules": [
+        "Madd Tabee'i",
+        "Ghunnah",
+        "Shadda"
+      ],
+      "errorType": "close",
+      "similarity": 0.8,
+      "occurredAt": "2026-04-27T03:05:25.429219Z"
+    },
+    {
+      "word": "ٱتَّقُوا۟",
+      "ayah": 1,
+      "surah": 4,
+      "tajweedRules": [
+        "Madd Tabee'i",
+        "Shadda",
+        "Tafkhim"
+      ],
+      "errorType": "missing",
+      "similarity": 0.0,
+      "occurredAt": "2026-04-27T03:05:25.429263Z"
+    },
+    {
+      "word": "ٱلَّذِى",
+      "ayah": 1,
+      "surah": 4,
+      "tajweedRules": [
+        "Shadda"
+      ],
+      "errorType": "missing",
+      "similarity": 0.0,
+      "occurredAt": "2026-04-27T03:05:25.429307Z"
+    },
+    {
+      "word": "وَٰحِدَةٍ",
+      "ayah": 1,
+      "surah": 4,
+      "tajweedRules": [
+        "Idgham with Ghunnah"
+      ],
+      "errorType": "close",
+      "similarity": 0.89,
+      "occurredAt": "2026-04-27T03:05:25.429343Z"
+    },
+    {
+      "word": "وَبَثَّ",
+      "ayah": 1,
+      "surah": 4,
+      "tajweedRules": [
+        "Shadda"
+      ],
+      "errorType": "close",
+      "similarity": 0.67,
+      "occurredAt": "2026-04-27T03:05:25.429380Z"
+    },
+    {
+      "word": "رِجَالًا",
+      "ayah": 1,
+      "surah": 4,
+      "tajweedRules": [
+        "Madd Tabee'i"
+      ],
+      "errorType": "close",
+      "similarity": 0.67,
+      "occurredAt": "2026-04-27T03:05:25.429443Z"
+    },
+    {
+      "word": "كَثِيرًا",
+      "ayah": 1,
+      "surah": 4,
+      "tajweedRules": [
+        "Madd Tabee'i"
+      ],
+      "errorType": "close",
+      "similarity": 0.8,
+      "occurredAt": "2026-04-27T03:05:25.429481Z"
+    },
+    {
+      "word": "وَنِسَآءً",
+      "ayah": 1,
+      "surah": 4,
+      "tajweedRules": [
+        "Madd Tabee'i"
+      ],
+      "errorType": "close",
+      "similarity": 0.89,
+      "occurredAt": "2026-04-27T03:05:25.429519Z"
+    },
+    {
+      "word": "ۚ",
+      "ayah": 1,
+      "surah": 4,
+      "tajweedRules": [],
+      "errorType": "missing",
+      "similarity": 0.0,
+      "occurredAt": "2026-04-27T03:05:25.429557Z"
+    },
+    {
+      "word": "وَٱتَّقُوا۟",
+      "ayah": 1,
+      "surah": 4,
+      "tajweedRules": [
+        "Madd Tabee'i",
+        "Shadda",
+        "Tafkhim"
+      ],
+      "errorType": "missing",
+      "similarity": 0.0,
+      "occurredAt": "2026-04-27T03:05:25.429601Z"
+    },
+    {
+      "word": "ٱللَّهَ",
+      "ayah": 1,
+      "surah": 4,
+      "tajweedRules": [
+        "Shadda"
+      ],
+      "errorType": "close",
+      "similarity": 0.75,
+      "occurredAt": "2026-04-27T03:05:25.429637Z"
+    },
+    {
+      "word": "ٱلَّذِى",
+      "ayah": 1,
+      "surah": 4,
+      "tajweedRules": [
+        "Shadda"
+      ],
+      "errorType": "missing",
+      "similarity": 0.0,
+      "occurredAt": "2026-04-27T03:05:25.429685Z"
+    },
+    {
+      "word": "تَسَآءَلُونَ",
+      "ayah": 1,
+      "surah": 4,
+      "tajweedRules": [
+        "Madd Tabee'i"
+      ],
+      "errorType": "close",
+      "similarity": 0.71,
+      "occurredAt": "2026-04-27T03:05:25.429723Z"
+    },
+    {
+      "word": "بِهِۦ",
+      "ayah": 1,
+      "surah": 4,
+      "tajweedRules": [],
+      "errorType": "close",
+      "similarity": 0.8,
+      "occurredAt": "2026-04-27T03:05:25.429756Z"
+    },
+    {
+      "word": "وَٱلْأَرْحَامَ",
+      "ayah": 1,
+      "surah": 4,
+      "tajweedRules": [
+        "Madd Tabee'i"
+      ],
+      "errorType": "close",
+      "similarity": 0.86,
+      "occurredAt": "2026-04-27T03:05:25.429796Z"
+    },
+    {
+      "word": "ۚ",
+      "ayah": 1,
+      "surah": 4,
+      "tajweedRules": [],
+      "errorType": "missing",
+      "similarity": 0.0,
+      "occurredAt": "2026-04-27T03:05:25.429829Z"
+    },
+    {
+      "word": "ٱللَّهَ",
+      "ayah": 1,
+      "surah": 4,
+      "tajweedRules": [
+        "Shadda"
+      ],
+      "errorType": "close",
+      "similarity": 0.75,
+      "occurredAt": "2026-04-27T03:05:25.429866Z"
+    },
+    {
+      "word": "كَانَ",
+      "ayah": 1,
+      "surah": 4,
+      "tajweedRules": [
+        "Madd Tabee'i"
+      ],
+      "errorType": "close",
+      "similarity": 0.57,
+      "occurredAt": "2026-04-27T03:05:25.429910Z"
+    },
+    {
+      "word": "رَقِيبًا",
+      "ayah": 1,
+      "surah": 4,
+      "tajweedRules": [
+        "Madd Tabee'i",
+        "Tafkhim"
+      ],
+      "errorType": "close",
+      "similarity": 0.6,
+      "occurredAt": "2026-04-27T03:05:25.429951Z"
+    }
+  ],
+  "total_words": 30,
+  "correct_words": 10,
+  "close_words": 14,
+  "missing_words": 6,
+  "extra_words": 0,
+  "reference_audio_url": "https://verses.quran.com/Alafasy/mp3/004001.mp3",
+  "transcribed_text": "يا أيها الناس اتق ربكم الذي خلقكم من نفس واحدة وخلق منها زوجها وبس منهما رجعل كسيرا ونسا قد تكون الله الذي تساعدون به ولرحام إن الله قال عليكم رفيدا",
+  "correct_text": "يَـٰٓأَيُّهَا ٱلنَّاسُ ٱتَّقُوا۟ رَبَّكُمُ ٱلَّذِى خَلَقَكُم مِّن نَّفْسٍ وَٰحِدَةٍ وَخَلَقَ مِنْهَا زَوْجَهَا وَبَثَّ مِنْهُمَا رِجَالًا كَثِيرًا وَنِسَآءً ۚ وَٱتَّقُوا۟ ٱللَّهَ ٱلَّذِى تَسَآءَلُونَ بِهِۦ وَٱلْأَرْحَامَ ۚ إِنَّ ٱللَّهَ كَانَ عَلَيْكُمْ رَقِيبًا"
+}

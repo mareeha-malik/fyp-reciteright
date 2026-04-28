@@ -1,0 +1,127 @@
+{
+  "id": "5176c990-ede2-4696-8b24-be9d87554c4d",
+  "user_id": "NeJxawwRSfbWJvljPI2e4BctRff2",
+  "surah": 4,
+  "ayah": 1,
+  "mode": "practice",
+  "accuracy_score": 86.6,
+  "whisper_score": 95.2,
+  "mfcc_score": 100.0,
+  "date_time": "2026-04-27T18:11:20.403611Z",
+  "duration_seconds": 159,
+  "mistakes": [
+    {
+      "word": "ٱلنَّاسُ",
+      "ayah": 1,
+      "surah": 4,
+      "tajweedRules": [
+        "Madd Tabee'i",
+        "Ghunnah",
+        "Shadda"
+      ],
+      "errorType": "close",
+      "similarity": 0.8,
+      "occurredAt": "2026-04-27T18:11:01.367077Z"
+    },
+    {
+      "word": "ٱتَّقُوا",
+      "ayah": 1,
+      "surah": 4,
+      "tajweedRules": [
+        "Madd Tabee'i",
+        "Shadda",
+        "Tafkhim"
+      ],
+      "errorType": "close",
+      "similarity": 0.6,
+      "occurredAt": "2026-04-27T18:11:01.369718Z"
+    },
+    {
+      "word": "ٱلَّذِى",
+      "ayah": 1,
+      "surah": 4,
+      "tajweedRules": [
+        "Shadda"
+      ],
+      "errorType": "close",
+      "similarity": 0.5,
+      "occurredAt": "2026-04-27T18:11:01.369815Z"
+    },
+    {
+      "word": "كَثِيرًا",
+      "ayah": 1,
+      "surah": 4,
+      "tajweedRules": [
+        "Madd Tabee'i"
+      ],
+      "errorType": "close",
+      "similarity": 0.57,
+      "occurredAt": "2026-04-27T18:11:01.369865Z"
+    },
+    {
+      "word": "وَٱتَّقُوا",
+      "ayah": 1,
+      "surah": 4,
+      "tajweedRules": [
+        "Madd Tabee'i",
+        "Shadda",
+        "Tafkhim"
+      ],
+      "errorType": "close",
+      "similarity": 0.5,
+      "occurredAt": "2026-04-27T18:11:01.369909Z"
+    },
+    {
+      "word": "ٱللَّهَ",
+      "ayah": 1,
+      "surah": 4,
+      "tajweedRules": [
+        "Shadda"
+      ],
+      "errorType": "close",
+      "similarity": 0.75,
+      "occurredAt": "2026-04-27T18:11:01.369951Z"
+    },
+    {
+      "word": "ٱلَّذِى",
+      "ayah": 1,
+      "surah": 4,
+      "tajweedRules": [
+        "Shadda"
+      ],
+      "errorType": "close",
+      "similarity": 0.5,
+      "occurredAt": "2026-04-27T18:11:01.369993Z"
+    },
+    {
+      "word": "ٱللَّهَ",
+      "ayah": 1,
+      "surah": 4,
+      "tajweedRules": [
+        "Shadda"
+      ],
+      "errorType": "close",
+      "similarity": 0.75,
+      "occurredAt": "2026-04-27T18:11:01.370031Z"
+    },
+    {
+      "word": "كَانَ",
+      "ayah": 1,
+      "surah": 4,
+      "tajweedRules": [
+        "Madd Tabee'i"
+      ],
+      "errorType": "close",
+      "similarity": 0.67,
+      "occurredAt": "2026-04-27T18:11:01.370070Z"
+    }
+  ],
+  "total_words": 28,
+  "correct_words": 19,
+  "close_words": 9,
+  "missing_words": 0,
+  "extra_words": 0,
+  "reference_audio_url": "https://verses.quran.com/Alafasy/mp3/004001.mp3",
+  "transcribed_text": "يَا أَيُّهَا النَّاسُ اتَّكُواۡ رَبُّكُمُ الَّذِي خَلَقَكُم مّنْ نَفْسٍ وَاحِدَةٍ وَخَلَقَ مِنْهَا زَوْجَهَا وَبَثّ مِنْهُمَا رِجَالٌ بَسِيرٍ وَنِسَآاءً اتَّكُوا اللَّهَ الَّذِي تَسَآعَلُونَ بِهِ وَلَرْحَامُ إِنَّ اللَّهَ قَانَ عَلِيْكُمْ رَقِيبًا",
+  "correct_text": "يَـٓأَيُّهَا ٱلنَّاسُ ٱتَّقُوا رَبَّكُمُ ٱلَّذِى خَلَقَكُم مِّن نَّفْسٍ وَحِدَةٍ وَخَلَقَ مِنْهَا زَوْجَهَا وَبَثَّ مِنْهُمَا رِجَالًا كَثِيرًا وَنِسَآءً وَٱتَّقُوا ٱللَّهَ ٱلَّذِى تَسَآءَلُونَ بِهِ وَٱلْأَرْحَامَ إِنَّ ٱللَّهَ كَانَ عَلَيْكُمْ رَقِيبًا"
+}

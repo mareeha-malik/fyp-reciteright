@@ -1,0 +1,53 @@
+{
+  "id": "d031ec6f-bc11-4cb1-83c6-b0edc0f595cf",
+  "user_id": "NeJxawwRSfbWJvljPI2e4BctRff2",
+  "surah": 2,
+  "ayah": 2,
+  "mode": "practice",
+  "accuracy_score": 69.7,
+  "whisper_score": 65.0,
+  "mfcc_score": 100.0,
+  "date_time": "2026-04-27T17:28:23.962401Z",
+  "duration_seconds": 101,
+  "mistakes": [
+    {
+      "word": "ٱلْكِتَـبُ",
+      "ayah": 2,
+      "surah": 2,
+      "tajweedRules": [],
+      "errorType": "close",
+      "similarity": 0.8,
+      "occurredAt": "2026-04-27T17:28:05.015708Z"
+    },
+    {
+      "word": "هُدًى",
+      "ayah": 2,
+      "surah": 2,
+      "tajweedRules": [],
+      "errorType": "missing",
+      "similarity": 0.0,
+      "occurredAt": "2026-04-27T17:28:05.015891Z"
+    },
+    {
+      "word": "لِّلْمُتَّقِينَ",
+      "ayah": 2,
+      "surah": 2,
+      "tajweedRules": [
+        "Madd Tabee'i",
+        "Shadda",
+        "Tafkhim"
+      ],
+      "errorType": "missing",
+      "similarity": 0.0,
+      "occurredAt": "2026-04-27T17:28:05.016796Z"
+    }
+  ],
+  "total_words": 7,
+  "correct_words": 4,
+  "close_words": 1,
+  "missing_words": 2,
+  "extra_words": 0,
+  "reference_audio_url": "https://verses.quran.com/Alafasy/mp3/002002.mp3",
+  "transcribed_text": "ذَٰلِكَ الْكِتَـٰبُ لَا رَيْبَ فِيهِ وَدَنِّتْ",
+  "correct_text": "ذَلِكَ ٱلْكِتَـبُ لَا رَيْبَ فِيهِ هُدًى لِّلْمُتَّقِينَ"
+}

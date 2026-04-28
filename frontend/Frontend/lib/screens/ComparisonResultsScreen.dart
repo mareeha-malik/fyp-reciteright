@@ -1,5 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:tajweed_corrector/widgets/tajweed_colored_text.dart';
+
 import 'package:google_fonts/google_fonts.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:tajweed_corrector/data/quran_data.dart';
@@ -244,34 +246,52 @@ class _ComparisonResultsScreenState extends State<ComparisonResultsScreen> {
      );
    }
 
-   /// Get Tajweed rule color by name
-   Color _getTajweedColor(String ruleName) {
-     switch (ruleName) {
-       case 'Madd':
-         return const Color(0xFF1565C0); // Blue
-       case 'Ghunnah':
-         return const Color(0xFF2E7D32); // Green
-       case 'Qalqalah':
-         return const Color(0xFFE65100); // Orange
-       case 'Ikhfa':
-         return const Color(0xFF6A1B9A); // Purple
-       case 'Idgham':
-         return const Color(0xFFB71C1C); // Red
-       case 'Iqlab':
-         return const Color(0xFF880E4F); // Deep Purple
-       case 'Izhar':
-         return const Color(0xFF00695C); // Teal
-       case 'Shadda':
-         return const Color(0xFFF57F17); // Amber
-       case 'Sukoon':
-         return const Color(0xFF37474F); // Blue Grey
-       default:
-         return Colors.grey;
-     }
-   }
+      /// Get Tajweed rule color by name
+      Color _getTajweedColor(String ruleName) {
+     ruleName = ruleName.toLowerCase();
+     if (ruleName.contains('madd')) return const Color(0xFF1565C0);
+     if (ruleName.contains('ghunnah')) return const Color(0xFF2E7D32);
+     if (ruleName.contains('qalqalah')) return const Color(0xFFE65100);
+     if (ruleName.contains('ikhfa')) return const Color(0xFF6A1B9A);
+     if (ruleName.contains('idgham')) return const Color(0xFFB71C1C);
+     if (ruleName.contains('izhar')) return const Color(0xFF00695C);
+     if (ruleName.contains('shadda')) return const Color(0xFFF57F17);
+     return Colors.grey;
+      }
 
-   /// Show dialog with Tajweed rule explanation
-   void _showTajweedDialog(String ruleName, String ruleArabic, String description) {
+      String _getFixSuggestion(String status, String correctWord, String userWord, List<Map<String, dynamic>> tajweedRules) {
+     if (status == 'missing') {
+       return "This word was missing or skipped. Listen to the Qari and make sure to pronounce '$correctWord' clearly.";
+     } else if (status == 'extra') {
+       return "You added an extra word ('$userWord') that isn't in the Ayah. Keep pace with the text and avoid adding syllables.";
+     }
+
+     String suggestion = "Your pronunciation was unclear or incorrect. Try to articulate '$correctWord' more precisely.";
+     
+     if (userWord.isNotEmpty) {
+       suggestion += " (You sounded like you said '$userWord').";
+     }
+
+     if (tajweedRules.isNotEmpty) {
+       final ruleNames = tajweedRules.map((r) => r['rule'] ?? '').where((r) => r.toString().isNotEmpty).toList();
+       if (ruleNames.isNotEmpty) {
+         suggestion += "\n\nTip: Note these Tajweed rules for this word: ${ruleNames.join(', ')}.";
+         if (ruleNames.any((r) => r.toString().toLowerCase().contains('qalqalah'))) {
+           suggestion += " Don't forget to add a slight bounce or echo (Qalqalah).";
+         }
+         if (ruleNames.any((r) => r.toString().toLowerCase().contains('ghunnah'))) {
+           suggestion += " Make sure to nasalize the sound (Ghunnah) for 2 counts.";
+         }
+         if (ruleNames.any((r) => r.toString().toLowerCase().contains('madd'))) {
+           suggestion += " Ensure you elongate the vowel properly.";
+         }
+       }
+     }
+     return suggestion;
+      }
+
+      /// Show dialog with Tajweed rule explanation
+      void _showTajweedDialog(String ruleName, String ruleArabic, String description) {
      showDialog(
        context: context,
        builder: (context) => AlertDialog(
@@ -306,7 +326,7 @@ class _ComparisonResultsScreenState extends State<ComparisonResultsScreen> {
          ],
        ),
      );
-   }
+      }
 
   @override
   Widget build(BuildContext context) {
@@ -350,7 +370,12 @@ class _ComparisonResultsScreenState extends State<ComparisonResultsScreen> {
     final tajweedSummary = Map<String, dynamic>.from(
       widget.comparisonResult['tajweed_summary'] as Map? ?? const {},
     );
-    final rulesBreakdown = Map<String, dynamic>.from(
+    
+      final teacherFeedback = Map<String, dynamic>.from(
+        widget.comparisonResult['teacher_feedback'] as Map? ?? const {},
+      );
+      final correctTextText = widget.comparisonResult['correct_text'] as String? ?? '';
+      final rulesBreakdown = Map<String, dynamic>.from(
       tajweedSummary['rules_breakdown'] as Map? ?? const {},
     );
 
@@ -371,7 +396,236 @@ class _ComparisonResultsScreenState extends State<ComparisonResultsScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // ─────────────────────────────────────────
-            // SECTION 1: Overall Score Card
+            
+              // ----------------------------------------------------------------
+              // NEW SECTION: Tajweed Colored Text
+              // ----------------------------------------------------------------
+              if (correctTextText.isNotEmpty && wordResults.isNotEmpty) ...[
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      Text(
+                        "Tajweed Preview",
+                        style: GoogleFonts.poppins(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF1E4976),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TajweedColoredText(
+                        arabicText: correctTextText,
+                        wordResults: wordResults,
+                        showLabels: true,
+                        interactive: true,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+              ],
+
+              // ----------------------------------------------------------------
+              // NEW SECTION: Teacher Feedback
+              // ----------------------------------------------------------------
+              if (teacherFeedback.isNotEmpty) ...[
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE3F2FD),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    teacherFeedback['summary']?.toString() ?? '',
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: const Color(0xFF1565C0),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                if (teacherFeedback['priority_fix'] != null)
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 16),
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF3E0),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.orange.shade300, width: 2),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "🔴 Most Important Fix:",
+                          style: GoogleFonts.poppins(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.orange.shade900,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          (teacherFeedback['priority_fix'] as Map)['how_to_fix']?.toString() ?? '',
+                          style: GoogleFonts.poppins(
+                            fontSize: 13,
+                            color: Colors.orange.shade800,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                Text(
+                  "📚 Tajweed Corrections",
+                  style: GoogleFonts.poppins(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF1E4976),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                ...(teacherFeedback['feedback_items'] as List? ?? []).where((item) {
+                  final i = item as Map;
+                  return i['type'] == 'error' || i['type'] == 'missing';
+                }).map((item) {
+                  final i = item as Map;
+                  final String hexColorStr = (i['color'] as String?)?.replaceAll('#', '') ?? '1E4976';
+                  final Color ruleColor = Color(int.parse(hexColorStr.padLeft(8, 'ff'), radix: 16));
+
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border(left: BorderSide(color: ruleColor, width: 4)),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Row(
+                            children: [
+                              Text(
+                                i['word']?.toString() ?? '',
+                                style: GoogleFonts.scheherazadeNew(fontSize: 22),
+                                textDirection: TextDirection.rtl,
+                              ),
+                              const Spacer(),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: ruleColor.withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(color: ruleColor),
+                                ),
+                                child: Text(
+                                  i['rule']?.toString() ?? '',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: ruleColor,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              i['message']?.toString() ?? '',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.grey.shade800,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        if (i['duration'] != null && i['duration'].toString().isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.timer_outlined, size: 14, color: Colors.blue),
+                                const SizedBox(width: 4),
+                                Text(
+                                  "Duration: ${i['duration']}",
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.blue,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        const SizedBox(height: 8),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.amber.shade50,
+                            borderRadius: const BorderRadius.only(
+                              bottomLeft: Radius.circular(12),
+                              bottomRight: Radius.circular(12),
+                            ),
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Icon(Icons.lightbulb_outline, color: Colors.amber.shade700, size: 16),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  i['how_to_fix']?.toString() ?? '',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.amber.shade900,
+                                    height: 1.5,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+                const SizedBox(height: 32),
+              ],
+
+              // SECTION 1: Overall Score Card
             // ─────────────────────────────────────────
             Container(
               width: double.infinity,
@@ -697,6 +951,34 @@ class _ComparisonResultsScreenState extends State<ComparisonResultsScreen> {
                                       fontSize: 11,
                                       color: Color(0xFF666666),
                                       fontStyle: FontStyle.italic,
+                                    ),
+                                  ),
+                                ],
+                                // Detailed Feedback for mistakes
+                                if (status != 'correct' && status != 'close') ...[
+                                  const SizedBox(height: 8),
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: statusColor.withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(color: statusColor.withValues(alpha: 0.5)),
+                                    ),
+                                    child: Row(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Icon(Icons.lightbulb_outline, size: 16, color: statusColor),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            _getFixSuggestion(status, word, transcribed, tajweedRules),
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: statusColor.withValues(alpha: 0.9),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ],

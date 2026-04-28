@@ -1,0 +1,80 @@
+{
+  "id": "65302d02-e0d1-4d4d-a5a8-c8ee275bf8a0",
+  "user_id": "NeJxawwRSfbWJvljPI2e4BctRff2",
+  "surah": 2,
+  "ayah": 2,
+  "mode": "practice",
+  "accuracy_score": 27.6,
+  "whisper_score": 0.0,
+  "mfcc_score": 0.0,
+  "date_time": "2026-04-27T03:04:07.357984Z",
+  "duration_seconds": 30,
+  "mistakes": [
+    {
+      "word": "ٱلْكِتَـٰبُ",
+      "ayah": 2,
+      "surah": 2,
+      "tajweedRules": [],
+      "errorType": "close",
+      "similarity": 0.73,
+      "occurredAt": "2026-04-27T03:03:48.636449Z"
+    },
+    {
+      "word": "رَيْبَ",
+      "ayah": 2,
+      "surah": 2,
+      "tajweedRules": [],
+      "errorType": "close",
+      "similarity": 0.67,
+      "occurredAt": "2026-04-27T03:03:48.636623Z"
+    },
+    {
+      "word": "ۛ",
+      "ayah": 2,
+      "surah": 2,
+      "tajweedRules": [],
+      "errorType": "missing",
+      "similarity": 0.0,
+      "occurredAt": "2026-04-27T03:03:48.636667Z"
+    },
+    {
+      "word": "ۛ",
+      "ayah": 2,
+      "surah": 2,
+      "tajweedRules": [],
+      "errorType": "missing",
+      "similarity": 0.0,
+      "occurredAt": "2026-04-27T03:03:48.636706Z"
+    },
+    {
+      "word": "هُدًى",
+      "ayah": 2,
+      "surah": 2,
+      "tajweedRules": [],
+      "errorType": "missing",
+      "similarity": 0.0,
+      "occurredAt": "2026-04-27T03:03:48.636758Z"
+    },
+    {
+      "word": "لِّلْمُتَّقِينَ",
+      "ayah": 2,
+      "surah": 2,
+      "tajweedRules": [
+        "Madd Tabee'i",
+        "Shadda",
+        "Tafkhim"
+      ],
+      "errorType": "missing",
+      "similarity": 0.0,
+      "occurredAt": "2026-04-27T03:03:48.636821Z"
+    }
+  ],
+  "total_words": 9,
+  "correct_words": 3,
+  "close_words": 2,
+  "missing_words": 4,
+  "extra_words": 0,
+  "reference_audio_url": "https://verses.quran.com/Alafasy/mp3/002002.mp3",
+  "transcribed_text": "ذلك الكتاب لا ريك فيه خدا للمدى",
+  "correct_text": "ذَٰلِكَ ٱلْكِتَـٰبُ لَا رَيْبَ ۛ فِيهِ ۛ هُدًى لِّلْمُتَّقِينَ"
+}

@@ -211,7 +211,7 @@ class TajweedTextWidget extends StatelessWidget {
     return code >= 0x0621 && code <= 0x064A;
   }
 
-  Widget _buildWordChip(BuildContext context, String word, TajweedRuleType rule) {
+    Widget _buildWordChip(BuildContext context, String word, TajweedRuleType rule) {
     final color = _ruleColor(rule);
     final label = _ruleLabel(rule);
 
@@ -229,7 +229,7 @@ class TajweedTextWidget extends StatelessWidget {
               style: GoogleFonts.scheherazadeNew(
                 fontSize: 28,
                 fontWeight: FontWeight.w600,
-                color: Colors.black87,
+                color: rule != TajweedRuleType.none ? color : Colors.black87,
                 height: 1.4,
               ),
             ),
@@ -263,7 +263,7 @@ class TajweedTextWidget extends StatelessWidget {
         ),
       ),
     );
-  }
+    }
 
   Widget _buildRuleLegend(List<TajweedRuleType> rules) {
     return Container(

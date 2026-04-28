@@ -4,6 +4,8 @@ import 'dart:ui';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:tajweed_corrector/widgets/tajweed_colored_text.dart';
+
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:just_audio/just_audio.dart';
@@ -15,6 +17,76 @@ import 'package:tajweed_corrector/services/session_service.dart';
 
 import 'ComparisonResultsScreen.dart';
 import 'package:tajweed_corrector/services/theme_service.dart';
+
+
+List<Map<String, dynamic>> detectTajweedFromText(String arabicText) {
+  final words = arabicText.trim().split(RegExp(r'\s+')).where((w) =>
+  w.isNotEmpty).toList();
+  List<Map<String, dynamic>> results = [];
+
+  Map<String, dynamic> detectTajweedRules(String word, String nextWord) {
+    List<Map<String, dynamic>> rules = [];
+
+    if (RegExp(r'\u064E\u0627|\u064F\u0648|\u0650\u064A').hasMatch(word)) {
+      rules.add(
+          {"rule": "Madd", "color": "#1565C0", "label": "Madd", "counts": 2});
+    }
+
+    if (RegExp(r'[\u0646\u0645]\u0651').hasMatch(word)) {
+      rules.add({
+        "rule": "Ghunnah",
+        "color": "#2E7D32",
+        "label": "Ghun",
+        "counts": 2
+      });
+    }
+
+    if (RegExp(r'[\u0642\u0637\u0628\u062C\u062F][\u0652]').hasMatch(word) ||
+        RegExp(r'[\u0642\u0637\u0628\u062C\u062F]$').hasMatch(word)) {
+      rules.add({
+        "rule": "Qalqalah",
+        "color": "#E65100",
+        "label": "Qalq",
+        "counts": 0
+      });
+    }
+
+    if (word.contains('\u0651')) {
+      rules.add(
+          {"rule": "Shadda", "color": "#F57F17", "label": "Shad", "counts": 0});
+    }
+
+    final heavy = '\u0635\u0636\u0637\u0638\u0642\u063A\u062E';
+    if (word.split('').any((c) => heavy.contains(c))) {
+      rules.add({
+        "rule": "Tafkhim",
+        "color": "#4E342E",
+        "label": "Tafk",
+        "counts": 0
+      });
+    }
+
+    return rules.isNotEmpty ? rules.first : {
+      "rule": "",
+      "color": "#1a1a1a",
+      "label": "",
+      "counts": 0
+    };
+  }
+
+  for (int i = 0; i < words.length; i++) {
+    final word = words[i];
+    final nextWord = i < words.length - 1 ? words[i + 1] : "";
+    final primaryRule = detectTajweedRules(word, nextWord);
+
+    results.add({
+      "word": word,
+      "status": "correct",
+      "tajweed_rules": primaryRule["rule"] != "" ? [primaryRule] : [],
+    });
+  }
+  return results;
+}
 
 class AyahDisplayScreen extends StatefulWidget {
   final Map<String, dynamic> surah;
@@ -179,10 +251,11 @@ class _AyahDisplayScreenState extends State<AyahDisplayScreen> {
     try {
       final response = await http
           .get(
-            Uri.parse(
-              'https://api.quran.com/api/v4/verses/by_chapter/${widget.surah['number']}?language=en&fields=text_uthmani&translations=131&per_page=300',
-            ),
-          )
+        Uri.parse(
+          'https://api.quran.com/api/v4/verses/by_chapter/${widget
+              .surah['number']}?language=en&fields=text_uthmani&translations=131&per_page=300',
+        ),
+      )
           .timeout(const Duration(seconds: 15));
 
       if (response.statusCode != 200) {
@@ -193,7 +266,8 @@ class _AyahDisplayScreenState extends State<AyahDisplayScreen> {
       final verses = decoded['verses'] as List? ?? [];
       final mapped = List<Map<String, dynamic>>.from(
         verses.map(
-          (v) => {
+              (v) =>
+          {
             'number': v['verse_number'] ?? 0,
             'text': v['text_uthmani'] ?? '',
             'translation': v['translations']?[0]?['text'] ?? '',
@@ -208,7 +282,7 @@ class _AyahDisplayScreenState extends State<AyahDisplayScreen> {
         if (_ayahs.isNotEmpty) {
           if (widget.initialAyahNumber != null) {
             final idx = _ayahs.indexWhere(
-              (a) => a['number'] == widget.initialAyahNumber,
+                  (a) => a['number'] == widget.initialAyahNumber,
             );
             _selectedAyahIndex = idx >= 0 ? idx : 0;
           } else {
@@ -265,8 +339,7 @@ class _AyahDisplayScreenState extends State<AyahDisplayScreen> {
     await _playSelectedAyah();
   }
 
-  Future<void> _goToAyahIndex(
-    int index, {
+  Future<void> _goToAyahIndex(int index, {
     bool autoplay = false,
     bool syncPage = true,
   }) async {
@@ -320,7 +393,7 @@ class _AyahDisplayScreenState extends State<AyahDisplayScreen> {
       }
       if (_repeatRange) {
         final rangeStartIndex = _ayahs.indexWhere(
-          (a) => a['number'] == _rangeStartAyah,
+              (a) => a['number'] == _rangeStartAyah,
         );
         if (rangeStartIndex != -1) {
           await _goToAyahIndex(rangeStartIndex, autoplay: true);
@@ -353,7 +426,9 @@ class _AyahDisplayScreenState extends State<AyahDisplayScreen> {
 
       final tempDir = await getTemporaryDirectory();
       final path =
-          '${tempDir.path}/recite_${DateTime.now().millisecondsSinceEpoch}.wav';
+          '${tempDir.path}/recite_${DateTime
+          .now()
+          .millisecondsSinceEpoch}.wav';
 
       await _recorder.start(
         const RecordConfig(encoder: AudioEncoder.wav),
@@ -418,16 +493,18 @@ class _AyahDisplayScreenState extends State<AyahDisplayScreen> {
         await http.MultipartFile.fromPath('audio', _recordingPath!),
       );
 
-      final response = await request.send().timeout(
-        const Duration(seconds: 60),
+      final streamedResponse = await request.send().timeout(
+        const Duration(seconds: 180),
       );
-      final body = await response.stream.bytesToString();
+      final httpResponse = await http.Response.fromStream(streamedResponse)
+          .timeout(const Duration(seconds: 180));
+      final body = httpResponse.body;
       final result =
-          body.isNotEmpty
-              ? (jsonDecode(body) as Map<String, dynamic>)
-              : <String, dynamic>{};
+      body.isNotEmpty
+          ? (jsonDecode(body) as Map<String, dynamic>)
+          : <String, dynamic>{};
 
-      if (response.statusCode == 422) {
+      if (httpResponse.statusCode == 422) {
         final reason = (result['reason'] ?? '').toString();
         if (reason == 'no_speech_detected') {
           _showError('No recitation detected. Recite clearly and try again.');
@@ -444,10 +521,10 @@ class _AyahDisplayScreenState extends State<AyahDisplayScreen> {
         return;
       }
 
-      if (response.statusCode != 200 || result['success'] != true) {
+      if (httpResponse.statusCode != 200 || result['success'] != true) {
         final errorMessage =
-            (result['error'] ?? 'Comparison failed. Please try again.')
-                .toString();
+        (result['error'] ?? 'Comparison failed. Please try again.')
+            .toString();
         _showError(errorMessage);
         return;
       }
@@ -457,7 +534,8 @@ class _AyahDisplayScreenState extends State<AyahDisplayScreen> {
         context,
         MaterialPageRoute(
           builder:
-              (_) => ComparisonResultsScreen(
+              (_) =>
+              ComparisonResultsScreen(
                 surah: widget.surah['number'] as int,
                 verse: ayah['number'] as int,
                 comparisonResult: result,
@@ -488,7 +566,8 @@ class _AyahDisplayScreenState extends State<AyahDisplayScreen> {
       context,
       MaterialPageRoute(
         builder:
-            (_) => _PracticeModeScreen(
+            (_) =>
+            _PracticeModeScreen(
               ayahs: _ayahs,
               initialIndex: _selectedAyahIndex ?? 0,
               surahNumber: widget.surah['number'] as int,
@@ -511,7 +590,10 @@ class _AyahDisplayScreenState extends State<AyahDisplayScreen> {
   }
 
   double _expandedPracticeCardHeight(BuildContext context) {
-    return (MediaQuery.of(context).size.height * 0.72).clamp(420.0, 760.0);
+    return (MediaQuery
+        .of(context)
+        .size
+        .height * 0.72).clamp(420.0, 760.0);
   }
 
   double _collapsedPracticeCardHeight(BuildContext context) {
@@ -522,9 +604,9 @@ class _AyahDisplayScreenState extends State<AyahDisplayScreen> {
   double _stickyCardFootprint(BuildContext context) {
     final media = MediaQuery.of(context);
     final cardHeight =
-        _isPracticeCardExpanded
-            ? _expandedPracticeCardHeight(context)
-            : _collapsedPracticeCardHeight(context);
+    _isPracticeCardExpanded
+        ? _expandedPracticeCardHeight(context)
+        : _collapsedPracticeCardHeight(context);
     // Card vertical margins (10 + 10) + SafeArea minimum bottom (6) + device bottom inset.
     return cardHeight + 26 + media.padding.bottom;
   }
@@ -566,80 +648,80 @@ class _AyahDisplayScreenState extends State<AyahDisplayScreen> {
         ],
       ),
       body:
-          _isLoadingAyahs
-              ? Center(
-                child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation(theme.primaryColor),
-                ),
-              )
-              : Stack(
-                children: [
-                  Column(
-                    children: [
-                      _buildCompactSurahHeader(context),
-                      Expanded(
-                        child: ListView.builder(
-                          padding: EdgeInsets.fromLTRB(
-                            12,
-                            12,
-                            12,
-                            _selectedAyahIndex == null
-                                ? 24
-                                : (_stickyCardFootprint(context) + 8),
-                          ),
-                          itemCount: _ayahs.length,
-                          itemBuilder: (context, index) {
-                            final ayah = _ayahs[index];
-                            final isSelected = index == _selectedAyahIndex;
-                            return _buildAyahRow(
-                              ayah,
-                              index,
-                              isSelected,
-                              context,
-                            );
-                          },
-                        ),
-                      ),
-                    ],
+      _isLoadingAyahs
+          ? Center(
+        child: CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation(theme.primaryColor),
+        ),
+      )
+          : Stack(
+        children: [
+          Column(
+            children: [
+              _buildCompactSurahHeader(context),
+              Expanded(
+                child: ListView.builder(
+                  padding: EdgeInsets.fromLTRB(
+                    12,
+                    12,
+                    12,
+                    _selectedAyahIndex == null
+                        ? 24
+                        : (_stickyCardFootprint(context) + 8),
                   ),
-                  if (_selectedAyahIndex != null)
-                    Positioned(
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      height: _stickyCardFootprint(context) + 20,
-                      child: IgnorePointer(
-                        child: ClipRect(
-                          child: BackdropFilter(
-                            filter: ImageFilter.blur(sigmaX: 2.5, sigmaY: 2.5),
-                            child: Container(
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  begin: Alignment.topCenter,
-                                  end: Alignment.bottomCenter,
-                                  colors: [
-                                    theme.scaffoldBackgroundColor.withValues(
-                                      alpha: 0.0,
-                                    ),
-                                    theme.scaffoldBackgroundColor.withValues(
-                                      alpha: 0.94,
-                                    ),
-                                    theme.scaffoldBackgroundColor,
-                                  ],
-                                ),
-                              ),
+                  itemCount: _ayahs.length,
+                  itemBuilder: (context, index) {
+                    final ayah = _ayahs[index];
+                    final isSelected = index == _selectedAyahIndex;
+                    return _buildAyahRow(
+                      ayah,
+                      index,
+                      isSelected,
+                      context,
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+          if (_selectedAyahIndex != null)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              height: _stickyCardFootprint(context) + 20,
+              child: IgnorePointer(
+                child: ClipRect(
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 2.5, sigmaY: 2.5),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            theme.scaffoldBackgroundColor.withValues(
+                              alpha: 0.0,
                             ),
-                          ),
+                            theme.scaffoldBackgroundColor.withValues(
+                              alpha: 0.94,
+                            ),
+                            theme.scaffoldBackgroundColor,
+                          ],
                         ),
                       ),
                     ),
-                  if (_selectedAyahIndex != null)
-                    Align(
-                      alignment: Alignment.bottomCenter,
-                      child: _buildStickyPracticeCard(context),
-                    ),
-                ],
+                  ),
+                ),
               ),
+            ),
+          if (_selectedAyahIndex != null)
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: _buildStickyPracticeCard(context),
+            ),
+        ],
+      ),
     );
   }
 
@@ -745,12 +827,10 @@ class _AyahDisplayScreenState extends State<AyahDisplayScreen> {
     );
   }
 
-  Widget _buildAyahRow(
-    Map<String, dynamic> ayah,
-    int index,
-    bool isSelected,
-    BuildContext context,
-  ) {
+  Widget _buildAyahRow(Map<String, dynamic> ayah,
+      int index,
+      bool isSelected,
+      BuildContext context,) {
     final theme = Theme.of(context);
 
     final ayahNumber = ayah['number'] as int? ?? 0;
@@ -765,9 +845,9 @@ class _AyahDisplayScreenState extends State<AyahDisplayScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
           color:
-              isSelected
-                  ? theme.primaryColor.withValues(alpha: 0.1)
-                  : theme.cardColor,
+          isSelected
+              ? theme.primaryColor.withValues(alpha: 0.1)
+              : theme.cardColor,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: isSelected ? theme.primaryColor : Colors.transparent,
@@ -894,7 +974,7 @@ class _AyahDisplayScreenState extends State<AyahDisplayScreen> {
               ),
               onTap: () {
                 setState(
-                  () => _isPracticeCardExpanded = !_isPracticeCardExpanded,
+                      () => _isPracticeCardExpanded = !_isPracticeCardExpanded,
                 );
               },
               child: Padding(
@@ -956,7 +1036,7 @@ class _AyahDisplayScreenState extends State<AyahDisplayScreen> {
                         child: AnimatedOpacity(
                           duration: const Duration(milliseconds: 450),
                           opacity:
-                              _recordingDuration.inSeconds.isEven ? 1 : 0.35,
+                          _recordingDuration.inSeconds.isEven ? 1 : 0.35,
                           child: const Icon(
                             Icons.fiber_manual_record_rounded,
                             color: Color(0xFFD32F2F),
@@ -1008,14 +1088,14 @@ class _AyahDisplayScreenState extends State<AyahDisplayScreen> {
                             ? Icons.stop_circle_rounded
                             : Icons.mic_rounded,
                         color:
-                            _isRecording
-                                ? const Color(0xFFD32F2F)
-                                : theme.primaryColor,
+                        _isRecording
+                            ? const Color(0xFFD32F2F)
+                            : theme.primaryColor,
                       ),
                       tooltip:
-                          _isRecording
-                              ? 'Recording in progress'
-                              : 'Open recorder',
+                      _isRecording
+                          ? 'Recording in progress'
+                          : 'Open recorder',
                     ),
                   ],
                 ),
@@ -1029,9 +1109,9 @@ class _AyahDisplayScreenState extends State<AyahDisplayScreen> {
                       child: Container(
                         decoration: BoxDecoration(
                           color:
-                              theme.brightness == Brightness.dark
-                                  ? AppThemes.darkSurfaceLow
-                                  : AppThemes.lightSurfaceLow,
+                          theme.brightness == Brightness.dark
+                              ? AppThemes.darkSurfaceLow
+                              : AppThemes.lightSurfaceLow,
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Row(
@@ -1040,16 +1120,16 @@ class _AyahDisplayScreenState extends State<AyahDisplayScreen> {
                               child: TextButton(
                                 onPressed:
                                     () =>
-                                        setState(() => _activePracticeTab = 0),
+                                    setState(() => _activePracticeTab = 0),
                                 style: TextButton.styleFrom(
                                   backgroundColor:
-                                      _activePracticeTab == 0
-                                          ? theme.primaryColor
-                                          : Colors.transparent,
+                                  _activePracticeTab == 0
+                                      ? theme.primaryColor
+                                      : Colors.transparent,
                                   foregroundColor:
-                                      _activePracticeTab == 0
-                                          ? Colors.white
-                                          : theme.primaryColor,
+                                  _activePracticeTab == 0
+                                      ? Colors.white
+                                      : theme.primaryColor,
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(10),
                                   ),
@@ -1062,16 +1142,16 @@ class _AyahDisplayScreenState extends State<AyahDisplayScreen> {
                               child: TextButton(
                                 onPressed:
                                     () =>
-                                        setState(() => _activePracticeTab = 1),
+                                    setState(() => _activePracticeTab = 1),
                                 style: TextButton.styleFrom(
                                   backgroundColor:
-                                      _activePracticeTab == 1
-                                          ? theme.primaryColor
-                                          : Colors.transparent,
+                                  _activePracticeTab == 1
+                                      ? theme.primaryColor
+                                      : Colors.transparent,
                                   foregroundColor:
-                                      _activePracticeTab == 1
-                                          ? Colors.white
-                                          : theme.primaryColor,
+                                  _activePracticeTab == 1
+                                      ? Colors.white
+                                      : theme.primaryColor,
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(10),
                                   ),
@@ -1087,9 +1167,9 @@ class _AyahDisplayScreenState extends State<AyahDisplayScreen> {
                       child: AnimatedSwitcher(
                         duration: const Duration(milliseconds: 180),
                         child:
-                            _activePracticeTab == 0
-                                ? _buildListenTab(context)
-                                : _buildRecordTab(context),
+                        _activePracticeTab == 0
+                            ? _buildListenTab(context)
+                            : _buildRecordTab(context),
                       ),
                     ),
                   ],
@@ -1146,9 +1226,9 @@ class _AyahDisplayScreenState extends State<AyahDisplayScreen> {
                     onPressed: _isRecording ? _stopRecording : _startRecording,
                     style: FilledButton.styleFrom(
                       backgroundColor:
-                          _isRecording
-                              ? const Color(0xFFD32F2F)
-                              : theme.primaryColor,
+                      _isRecording
+                          ? const Color(0xFFD32F2F)
+                          : theme.primaryColor,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
@@ -1186,7 +1266,9 @@ class _AyahDisplayScreenState extends State<AyahDisplayScreen> {
                       children: [
                         AnimatedOpacity(
                           duration: const Duration(milliseconds: 450),
-                          opacity: _recordingDuration.inSeconds.isEven ? 1 : 0.35,
+                          opacity: _recordingDuration.inSeconds.isEven
+                              ? 1
+                              : 0.35,
                           child: const Icon(
                             Icons.fiber_manual_record_rounded,
                             color: Color(0xFFD32F2F),
@@ -1234,7 +1316,7 @@ class _AyahDisplayScreenState extends State<AyahDisplayScreen> {
                   width: double.infinity,
                   child: ElevatedButton.icon(
                     onPressed:
-                        hasRecording && !_isComparing ? _compareRecording : null,
+                    hasRecording && !_isComparing ? _compareRecording : null,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: theme.primaryColor,
                       foregroundColor: Colors.white,
@@ -1243,27 +1325,27 @@ class _AyahDisplayScreenState extends State<AyahDisplayScreen> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       disabledBackgroundColor:
-                          theme.brightness == Brightness.dark
-                              ? AppThemes.darkDisabledBackground
-                              : AppThemes.lightDisabledBackground,
+                      theme.brightness == Brightness.dark
+                          ? AppThemes.darkDisabledBackground
+                          : AppThemes.lightDisabledBackground,
                       disabledForegroundColor:
-                          theme.brightness == Brightness.dark
-                              ? AppThemes.darkDisabledText
-                              : AppThemes.lightDisabledText,
+                      theme.brightness == Brightness.dark
+                          ? AppThemes.darkDisabledText
+                          : AppThemes.lightDisabledText,
                     ),
                     icon:
-                        _isComparing
-                            ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                  Colors.white,
-                                ),
-                              ),
-                            )
-                            : const Icon(Icons.compare_arrows_rounded),
+                    _isComparing
+                        ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          Colors.white,
+                        ),
+                      ),
+                    )
+                        : const Icon(Icons.compare_arrows_rounded),
                     label: Text(
                       !hasRecording
                           ? 'Record first'
@@ -1288,15 +1370,15 @@ class _AyahDisplayScreenState extends State<AyahDisplayScreen> {
     return Container(
       decoration: BoxDecoration(
         color:
-            theme.brightness == Brightness.dark
-                ? AppThemes.darkSurfaceLow
-                : AppThemes.lightSurfaceLow,
+        theme.brightness == Brightness.dark
+            ? AppThemes.darkSurfaceLow
+            : AppThemes.lightSurfaceLow,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color:
-              theme.brightness == Brightness.dark
-                  ? AppThemes.darkBorderSubtle
-                  : AppThemes.lightBorderSubtle,
+          theme.brightness == Brightness.dark
+              ? AppThemes.darkBorderSubtle
+              : AppThemes.lightBorderSubtle,
         ),
       ),
       child: Column(
@@ -1305,8 +1387,9 @@ class _AyahDisplayScreenState extends State<AyahDisplayScreen> {
             dense: true,
             contentPadding: const EdgeInsets.symmetric(horizontal: 12),
             onTap:
-                () => setState(
-                  () => _showPlaybackSettings = !_showPlaybackSettings,
+                () =>
+                setState(
+                      () => _showPlaybackSettings = !_showPlaybackSettings,
                 ),
             title: Text(
               'Playback Settings',
@@ -1326,9 +1409,9 @@ class _AyahDisplayScreenState extends State<AyahDisplayScreen> {
           AnimatedCrossFade(
             duration: const Duration(milliseconds: 180),
             crossFadeState:
-                _showPlaybackSettings
-                    ? CrossFadeState.showSecond
-                    : CrossFadeState.showFirst,
+            _showPlaybackSettings
+                ? CrossFadeState.showSecond
+                : CrossFadeState.showFirst,
             firstChild: const SizedBox.shrink(),
             secondChild: Padding(
               padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
@@ -1366,7 +1449,9 @@ class _AyahDisplayScreenState extends State<AyahDisplayScreen> {
               ),
               Expanded(
                 child: Text(
-                  'Ayah ${selected?['number'] ?? '-'}  •  ${(_selectedAyahIndex ?? 0) + 1}/${_ayahs.length}',
+                  'Ayah ${selected?['number'] ??
+                      '-'}  •  ${(_selectedAyahIndex ?? 0) + 1}/${_ayahs
+                      .length}',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: theme.primaryColor,
@@ -1378,26 +1463,19 @@ class _AyahDisplayScreenState extends State<AyahDisplayScreen> {
               IconButton(
                 constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
                 onPressed:
-                    _selectedAyahIndex == _ayahs.length - 1
-                        ? null
-                        : _goToNextAyah,
+                _selectedAyahIndex == _ayahs.length - 1
+                    ? null
+                    : _goToNextAyah,
                 icon: const Icon(Icons.arrow_forward_ios_rounded),
               ),
             ],
           ),
           const SizedBox(height: 8),
-          Text(
-            ayahText,
-            textDirection: TextDirection.rtl,
-            textAlign: TextAlign.center,
-            maxLines: null,
-            overflow: TextOverflow.visible,
-            style: GoogleFonts.scheherazadeNew(
-              fontSize: 30,
-              color: theme.textTheme.bodyLarge?.color,
-              height: 1.6,
-              fontWeight: FontWeight.w600,
-            ),
+          TajweedColoredText(
+            arabicText: ayahText,
+            wordResults: detectTajweedFromText(ayahText),
+            showLabels: true,
+            interactive: true,
           ),
         ],
       ),
@@ -1411,38 +1489,38 @@ class _AyahDisplayScreenState extends State<AyahDisplayScreen> {
       scrollDirection: Axis.horizontal,
       child: Row(
         children:
-            _qaris.map((qari) {
-              final isSelected = qari['id'] == _selectedQariId;
-              return Padding(
-                padding: const EdgeInsets.only(right: 10),
-                child: ChoiceChip(
-                  selectedColor: theme.primaryColor,
-                  backgroundColor:
-                      theme.brightness == Brightness.dark
-                          ? AppThemes.darkSurfaceLow
-                          : AppThemes.lightSurfaceLow,
-                  labelStyle: TextStyle(
-                    color: isSelected ? Colors.white : theme.primaryColor,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  side: BorderSide(
-                    color:
-                        isSelected
-                            ? theme.primaryColor
-                            : (theme.brightness == Brightness.dark
-                                ? AppThemes.darkBorderSubtle
-                                : AppThemes.lightBorderSubtle),
-                    width: 1.5,
-                  ),
-                  selected: isSelected,
-                  label: Text(qari['name'] ?? ''),
-                  onSelected: (_) {
-                    setState(() => _selectedQariId = qari['id']!);
-                  },
-                ),
-              );
-            }).toList(),
+        _qaris.map((qari) {
+          final isSelected = qari['id'] == _selectedQariId;
+          return Padding(
+            padding: const EdgeInsets.only(right: 10),
+            child: ChoiceChip(
+              selectedColor: theme.primaryColor,
+              backgroundColor:
+              theme.brightness == Brightness.dark
+                  ? AppThemes.darkSurfaceLow
+                  : AppThemes.lightSurfaceLow,
+              labelStyle: TextStyle(
+                color: isSelected ? Colors.white : theme.primaryColor,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
+              side: BorderSide(
+                color:
+                isSelected
+                    ? theme.primaryColor
+                    : (theme.brightness == Brightness.dark
+                    ? AppThemes.darkBorderSubtle
+                    : AppThemes.lightBorderSubtle),
+                width: 1.5,
+              ),
+              selected: isSelected,
+              label: Text(qari['name'] ?? ''),
+              onSelected: (_) {
+                setState(() => _selectedQariId = qari['id']!);
+              },
+            ),
+          );
+        }).toList(),
       ),
     );
   }
@@ -1463,30 +1541,30 @@ class _AyahDisplayScreenState extends State<AyahDisplayScreen> {
           ),
           elevation: 2,
           disabledBackgroundColor:
-              theme.brightness == Brightness.dark
-                  ? AppThemes.darkDisabledBackground
-                  : AppThemes.lightDisabledBackground,
+          theme.brightness == Brightness.dark
+              ? AppThemes.darkDisabledBackground
+              : AppThemes.lightDisabledBackground,
           disabledForegroundColor:
-              theme.brightness == Brightness.dark
-                  ? AppThemes.darkDisabledText
-                  : AppThemes.lightDisabledText,
+          theme.brightness == Brightness.dark
+              ? AppThemes.darkDisabledText
+              : AppThemes.lightDisabledText,
         ),
         icon:
-            _isAudioLoading
-                ? const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.5,
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                  ),
-                )
-                : Icon(
-                  _isPlayingAudio
-                      ? Icons.pause_rounded
-                      : Icons.play_arrow_rounded,
-                  size: 22,
-                ),
+        _isAudioLoading
+            ? const SizedBox(
+          width: 18,
+          height: 18,
+          child: CircularProgressIndicator(
+            strokeWidth: 2.5,
+            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+          ),
+        )
+            : Icon(
+          _isPlayingAudio
+              ? Icons.pause_rounded
+              : Icons.play_arrow_rounded,
+          size: 22,
+        ),
         label: Text(
           _isPlayingAudio ? 'Pause' : 'Listen — $_selectedQariName',
           style: const TextStyle(
@@ -1528,15 +1606,15 @@ class _AyahDisplayScreenState extends State<AyahDisplayScreen> {
           borderRadius: BorderRadius.circular(8),
           child: Slider(
             value:
-                _audioPosition.inMilliseconds
-                    .clamp(0, _safeSliderMax().toInt())
-                    .toDouble(),
+            _audioPosition.inMilliseconds
+                .clamp(0, _safeSliderMax().toInt())
+                .toDouble(),
             max: _safeSliderMax(),
             activeColor: theme.primaryColor,
             inactiveColor:
-                theme.brightness == Brightness.dark
-                    ? AppThemes.darkBorderSubtle
-                    : AppThemes.lightBorderSubtle,
+            theme.brightness == Brightness.dark
+                ? AppThemes.darkBorderSubtle
+                : AppThemes.lightBorderSubtle,
             onChanged: (value) async {
               await _player.seek(Duration(milliseconds: value.toInt()));
             },
@@ -1567,16 +1645,16 @@ class _AyahDisplayScreenState extends State<AyahDisplayScreen> {
                       padding: EdgeInsets.zero,
                       onPressed: () {
                         setState(
-                          () => _repeatCurrentAyah = !_repeatCurrentAyah,
+                              () => _repeatCurrentAyah = !_repeatCurrentAyah,
                         );
                       },
                       icon: Icon(
                         Icons.repeat_one_rounded,
                         size: 20,
                         color:
-                            _repeatCurrentAyah
-                                ? theme.primaryColor
-                                : Colors.grey,
+                        _repeatCurrentAyah
+                            ? theme.primaryColor
+                            : Colors.grey,
                       ),
                     ),
                   ),
@@ -1602,9 +1680,9 @@ class _AyahDisplayScreenState extends State<AyahDisplayScreen> {
     final theme = Theme.of(context);
     final ayahNumbers = _ayahs.map((e) => e['number'] as int).toList();
     final borderColor =
-        theme.brightness == Brightness.dark
-            ? AppThemes.darkBorderSubtle
-            : AppThemes.lightBorderSubtle;
+    theme.brightness == Brightness.dark
+        ? AppThemes.darkBorderSubtle
+        : AppThemes.lightBorderSubtle;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1667,14 +1745,15 @@ class _AyahDisplayScreenState extends State<AyahDisplayScreen> {
                       padding: const EdgeInsets.symmetric(horizontal: 10),
                       value: _rangeStartAyah,
                       items:
-                          ayahNumbers
-                              .map(
-                                (n) => DropdownMenuItem(
-                                  value: n,
-                                  child: Text('$n'),
-                                ),
-                              )
-                              .toList(),
+                      ayahNumbers
+                          .map(
+                            (n) =>
+                            DropdownMenuItem(
+                              value: n,
+                              child: Text('$n'),
+                            ),
+                      )
+                          .toList(),
                       onChanged: (v) {
                         if (v == null) return;
                         setState(() {
@@ -1711,15 +1790,16 @@ class _AyahDisplayScreenState extends State<AyahDisplayScreen> {
                       padding: const EdgeInsets.symmetric(horizontal: 10),
                       value: _rangeEndAyah,
                       items:
-                          ayahNumbers
-                              .where((n) => n >= _rangeStartAyah)
-                              .map(
-                                (n) => DropdownMenuItem(
-                                  value: n,
-                                  child: Text('$n'),
-                                ),
-                              )
-                              .toList(),
+                      ayahNumbers
+                          .where((n) => n >= _rangeStartAyah)
+                          .map(
+                            (n) =>
+                            DropdownMenuItem(
+                              value: n,
+                              child: Text('$n'),
+                            ),
+                      )
+                          .toList(),
                       onChanged: (v) {
                         if (v == null) return;
                         setState(() => _rangeEndAyah = v);
@@ -1849,7 +1929,7 @@ class _PracticeModeScreenState extends State<_PracticeModeScreen> {
     }
     if (_autoPlayRange && _repeatRange && currentAyah == _rangeEnd) {
       final startIndex = widget.ayahs.indexWhere(
-        (a) => a['number'] == _rangeStart,
+            (a) => a['number'] == _rangeStart,
       );
       if (startIndex != -1) {
         _goToIndex(startIndex, autoplay: true);
@@ -1941,15 +2021,12 @@ class _PracticeModeScreenState extends State<_PracticeModeScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text(
-                        ayah['text'] as String,
-                        textDirection: TextDirection.rtl,
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.scheherazadeNew(
-                          fontSize: 40,
-                          color: theme.textTheme.bodyLarge?.color,
-                          height: 1.9,
-                        ),
+                      TajweedColoredText(
+                        arabicText: ayah['text'] as String,
+                        wordResults: detectTajweedFromText(
+                            ayah['text'] as String),
+                        showLabels: true,
+                        interactive: true,
                       ),
                       const SizedBox(height: 10),
                       if (_showTranslation)
@@ -1982,9 +2059,9 @@ class _PracticeModeScreenState extends State<_PracticeModeScreen> {
                           height: 48,
                         ),
                         onPressed:
-                            _selectedIndex == 0
-                                ? null
-                                : () => _goToIndex(_selectedIndex - 1),
+                        _selectedIndex == 0
+                            ? null
+                            : () => _goToIndex(_selectedIndex - 1),
                         icon: const Icon(Icons.arrow_back_rounded),
                         tooltip: 'Previous ayah',
                       ),
@@ -2014,9 +2091,9 @@ class _PracticeModeScreenState extends State<_PracticeModeScreen> {
                           height: 48,
                         ),
                         onPressed:
-                            _selectedIndex == widget.ayahs.length - 1
-                                ? null
-                                : () => _goToIndex(_selectedIndex + 1),
+                        _selectedIndex == widget.ayahs.length - 1
+                            ? null
+                            : () => _goToIndex(_selectedIndex + 1),
                         icon: const Icon(Icons.arrow_forward_rounded),
                         tooltip: 'Next ayah',
                       ),
@@ -2028,44 +2105,45 @@ class _PracticeModeScreenState extends State<_PracticeModeScreen> {
                   scrollDirection: Axis.horizontal,
                   child: Row(
                     children:
-                        widget.qaris.map((qari) {
-                          final selected = _selectedQariId == qari['id'];
-                          final borderColor =
-                              theme.brightness == Brightness.dark
-                                  ? AppThemes.darkBorderSubtle
-                                  : AppThemes.lightBorderSubtle;
-                          final bgColor =
-                              theme.brightness == Brightness.dark
-                                  ? AppThemes.darkSurfaceLow
-                                  : AppThemes.lightSurfaceLow;
+                    widget.qaris.map((qari) {
+                      final selected = _selectedQariId == qari['id'];
+                      final borderColor =
+                      theme.brightness == Brightness.dark
+                          ? AppThemes.darkBorderSubtle
+                          : AppThemes.lightBorderSubtle;
+                      final bgColor =
+                      theme.brightness == Brightness.dark
+                          ? AppThemes.darkSurfaceLow
+                          : AppThemes.lightSurfaceLow;
 
-                          return Padding(
-                            padding: const EdgeInsets.only(right: 10),
-                            child: ChoiceChip(
-                              selected: selected,
-                              selectedColor: theme.primaryColor,
-                              backgroundColor: bgColor,
-                              labelStyle: TextStyle(
-                                color:
-                                    selected
-                                        ? Colors.white
-                                        : theme.primaryColor,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                              ),
-                              side: BorderSide(
-                                color:
-                                    selected ? theme.primaryColor : borderColor,
-                                width: 1.5,
-                              ),
-                              label: Text(qari['name'] ?? ''),
-                              onSelected:
-                                  (_) => setState(
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 10),
+                        child: ChoiceChip(
+                          selected: selected,
+                          selectedColor: theme.primaryColor,
+                          backgroundColor: bgColor,
+                          labelStyle: TextStyle(
+                            color:
+                            selected
+                                ? Colors.white
+                                : theme.primaryColor,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          side: BorderSide(
+                            color:
+                            selected ? theme.primaryColor : borderColor,
+                            width: 1.5,
+                          ),
+                          label: Text(qari['name'] ?? ''),
+                          onSelected:
+                              (_) =>
+                              setState(
                                     () => _selectedQariId = qari['id']!,
-                                  ),
-                            ),
-                          );
-                        }).toList(),
+                              ),
+                        ),
+                      );
+                    }).toList(),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -2073,15 +2151,15 @@ class _PracticeModeScreenState extends State<_PracticeModeScreen> {
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color:
-                        theme.brightness == Brightness.dark
-                            ? Colors.grey[850]
-                            : Colors.grey[50],
+                    theme.brightness == Brightness.dark
+                        ? Colors.grey[850]
+                        : Colors.grey[50],
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color:
-                          theme.brightness == Brightness.dark
-                              ? AppThemes.darkBorderSubtle
-                              : AppThemes.lightBorderSubtle,
+                      theme.brightness == Brightness.dark
+                          ? AppThemes.darkBorderSubtle
+                          : AppThemes.lightBorderSubtle,
                     ),
                   ),
                   child: Column(
@@ -2146,9 +2224,9 @@ class _PracticeModeScreenState extends State<_PracticeModeScreen> {
                                   decoration: BoxDecoration(
                                     border: Border.all(
                                       color:
-                                          theme.brightness == Brightness.dark
-                                              ? AppThemes.darkBorderSubtle
-                                              : AppThemes.lightBorderSubtle,
+                                      theme.brightness == Brightness.dark
+                                          ? AppThemes.darkBorderSubtle
+                                          : AppThemes.lightBorderSubtle,
                                     ),
                                     borderRadius: BorderRadius.circular(8),
                                     color: theme.cardColor,
@@ -2161,14 +2239,15 @@ class _PracticeModeScreenState extends State<_PracticeModeScreen> {
                                     ),
                                     value: _rangeStart,
                                     items:
-                                        numbers
-                                            .map(
-                                              (n) => DropdownMenuItem(
-                                                value: n,
-                                                child: Text('$n'),
-                                              ),
-                                            )
-                                            .toList(),
+                                    numbers
+                                        .map(
+                                          (n) =>
+                                          DropdownMenuItem(
+                                            value: n,
+                                            child: Text('$n'),
+                                          ),
+                                    )
+                                        .toList(),
                                     onChanged: (v) {
                                       if (v == null) return;
                                       setState(() {
@@ -2199,9 +2278,9 @@ class _PracticeModeScreenState extends State<_PracticeModeScreen> {
                                   decoration: BoxDecoration(
                                     border: Border.all(
                                       color:
-                                          theme.brightness == Brightness.dark
-                                              ? AppThemes.darkBorderSubtle
-                                              : AppThemes.lightBorderSubtle,
+                                      theme.brightness == Brightness.dark
+                                          ? AppThemes.darkBorderSubtle
+                                          : AppThemes.lightBorderSubtle,
                                     ),
                                     borderRadius: BorderRadius.circular(8),
                                     color: theme.cardColor,
@@ -2214,15 +2293,16 @@ class _PracticeModeScreenState extends State<_PracticeModeScreen> {
                                     ),
                                     value: _rangeEnd,
                                     items:
-                                        numbers
-                                            .where((n) => n >= _rangeStart)
-                                            .map(
-                                              (n) => DropdownMenuItem(
-                                                value: n,
-                                                child: Text('$n'),
-                                              ),
-                                            )
-                                            .toList(),
+                                    numbers
+                                        .where((n) => n >= _rangeStart)
+                                        .map(
+                                          (n) =>
+                                          DropdownMenuItem(
+                                            value: n,
+                                            child: Text('$n'),
+                                          ),
+                                    )
+                                        .toList(),
                                     onChanged: (v) {
                                       if (v == null) return;
                                       setState(() => _rangeEnd = v);
@@ -2246,17 +2326,17 @@ class _PracticeModeScreenState extends State<_PracticeModeScreen> {
                               ),
                               onPressed: () {
                                 setState(
-                                  () =>
-                                      _repeatCurrentAyah = !_repeatCurrentAyah,
+                                      () =>
+                                  _repeatCurrentAyah = !_repeatCurrentAyah,
                                 );
                               },
                               icon: Icon(
                                 Icons.repeat_one_rounded,
                                 size: 20,
                                 color:
-                                    _repeatCurrentAyah
-                                        ? theme.primaryColor
-                                        : Colors.grey,
+                                _repeatCurrentAyah
+                                    ? theme.primaryColor
+                                    : Colors.grey,
                               ),
                             ),
                           ),
