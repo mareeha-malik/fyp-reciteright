@@ -1,0 +1,58 @@
+{
+  "id": "4a22368d-2387-4d83-b1ac-2813e8235337",
+  "user_id": "NeJxawwRSfbWJvljPI2e4BctRff2",
+  "surah": 1,
+  "ayah": 7,
+  "mode": "practice",
+  "accuracy_score": 82.9,
+  "whisper_score": 83.9,
+  "mfcc_score": 100.0,
+  "date_time": "2026-04-29T00:41:34.179522Z",
+  "duration_seconds": 54,
+  "mistakes": [
+    {
+      "word": "صِرَطَ",
+      "ayah": 7,
+      "surah": 1,
+      "tajweedRules": [
+        "Tafkhim"
+      ],
+      "errorType": "missing",
+      "similarity": 0.0,
+      "occurredAt": "2026-04-29T00:41:15.701182Z"
+    },
+    {
+      "word": "أَنْعَمْتَ",
+      "ayah": 7,
+      "surah": 1,
+      "tajweedRules": [
+        "Izhar",
+        "Izhar Shafawi"
+      ],
+      "errorType": "close",
+      "similarity": 0.8,
+      "occurredAt": "2026-04-29T00:41:15.703862Z"
+    },
+    {
+      "word": "ٱلضَّآلِّينَ",
+      "ayah": 7,
+      "surah": 1,
+      "tajweedRules": [
+        "Madd Tabee'i",
+        "Shadda",
+        "Tafkhim"
+      ],
+      "errorType": "close",
+      "similarity": 0.83,
+      "occurredAt": "2026-04-29T00:41:15.703957Z"
+    }
+  ],
+  "total_words": 9,
+  "correct_words": 6,
+  "close_words": 2,
+  "missing_words": 1,
+  "extra_words": 0,
+  "reference_audio_url": "https://verses.quran.com/Alafasy/mp3/001007.mp3",
+  "transcribed_text": "سِرَٰتَ ٱلَّذِينَ عَنْعَمْتَ عَلَيْهِمْ غَيْرِ ٱلْمَغْضُوبِ عَلَيْهِمْ وَلَا ٱلضّآلّ",
+  "correct_text": "صِرَطَ ٱلَّذِينَ أَنْعَمْتَ عَلَيْهِمْ غَيْرِ ٱلْمَغْضُوبِ عَلَيْهِمْ وَلَا ٱلضَّآلِّينَ"
+}

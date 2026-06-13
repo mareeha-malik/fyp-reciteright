@@ -29,7 +29,7 @@
     "userId": "NeJxawwRSfbWJvljPI2e4BctRff2",
     "surahNumber": 1,
     "ayahNumber": 2,
-    "status": "needs_review",
+    "status": "learning",
     "accuracyHistory": [
       {
         "session_id": "4ea0bee0-c404-47e4-92ad-793a9fd468bb",
@@ -40,10 +40,20 @@
         "session_id": "0f7a6207-bfee-4b55-9486-0cd6ca0d2abd",
         "score": 36.9,
         "recorded_at": "2026-04-14T16:10:32.964887Z"
+      },
+      {
+        "session_id": "3b3650a8-640c-47f0-b986-d28cd9a399a1",
+        "score": 68.1,
+        "recorded_at": "2026-04-29T00:48:02.893316Z"
+      },
+      {
+        "session_id": "161ed581-faa0-4c51-a373-8708c4a5b61d",
+        "score": 89.2,
+        "recorded_at": "2026-04-29T00:49:26.208727Z"
       }
     ],
-    "timesRecited": 2,
-    "lastRecitedAt": "2026-04-14T16:10:32.964887Z",
-    "lastStatusChangeAt": "2026-04-14T09:11:59.280236Z"
+    "timesRecited": 4,
+    "lastRecitedAt": "2026-04-29T00:49:26.208727Z",
+    "lastStatusChangeAt": "2026-04-29T00:49:26.208727Z"
   }
 ]

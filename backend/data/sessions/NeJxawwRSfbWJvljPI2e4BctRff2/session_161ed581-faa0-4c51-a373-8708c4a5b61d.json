@@ -1,0 +1,33 @@
+{
+  "id": "161ed581-faa0-4c51-a373-8708c4a5b61d",
+  "user_id": "NeJxawwRSfbWJvljPI2e4BctRff2",
+  "surah": 1,
+  "ayah": 2,
+  "mode": "memorization",
+  "accuracy_score": 89.2,
+  "whisper_score": 96.2,
+  "mfcc_score": 100.0,
+  "date_time": "2026-04-29T00:49:43.867577Z",
+  "duration_seconds": 10,
+  "mistakes": [
+    {
+      "word": "ٱلْعَـلَمِينَ",
+      "ayah": 2,
+      "surah": 1,
+      "tajweedRules": [
+        "Madd Tabee'i"
+      ],
+      "errorType": "close",
+      "similarity": 0.83,
+      "occurredAt": "2026-04-29T00:49:25.631459Z"
+    }
+  ],
+  "total_words": 4,
+  "correct_words": 3,
+  "close_words": 1,
+  "missing_words": 0,
+  "extra_words": 0,
+  "reference_audio_url": "https://verses.quran.com/Alafasy/mp3/001002.mp3",
+  "transcribed_text": "ٱلْحَمْدُ لِلّٰهِ رَبِّ ٱلْعَـٰلَمِ",
+  "correct_text": "ٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَـلَمِينَ"
+}
