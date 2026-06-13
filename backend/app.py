@@ -4,9 +4,9 @@ import io
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 from flask import Flask, request, jsonify, Response, copy_current_request_context
-import signal
-from functools import wraps
 from flask_cors import CORS
+from functools import wraps
+import signal
 import librosa
 import librosa.sequence
 import numpy as np
@@ -22,14 +22,15 @@ import re
 from difflib import SequenceMatcher
 import threading
 import soundfile as sf
-try:
-    import noisereduce as nr
-except:
-    nr = None
-warnings.filterwarnings('ignore')
-
 from openai import OpenAI
 import os
+
+try:
+    import noisereduce as nr
+except Exception:
+    nr = None
+
+warnings.filterwarnings("ignore")
 
 # ── OpenAI client ─────────────────────────────────────────────────────────────
 api_key = os.getenv("OPENAI_API_KEY")
@@ -37,9 +38,11 @@ if not api_key:
     raise RuntimeError("OPENAI_API_KEY is not set in the environment")
 client = OpenAI(api_key=api_key)
 
+# ── Flask app ─────────────────────────────────────────────────────────────────
 app = Flask(__name__)
 CORS(app)
 
+# ── Qari cache setup ──────────────────────────────────────────────────────────
 qari_cache = {}
 QARI_CACHE_DIR = os.path.join(tempfile.gettempdir(), "reciteright_cache")
 QARI_CACHE_CLEANUP_INTERVAL_SECONDS = 30 * 60
@@ -95,17 +98,13 @@ def _start_qari_cache_cleanup_thread():
 
 _start_qari_cache_cleanup_thread()
 
-# Timeout handler for long-running requests (Windows-compatible)
-from threading import Timer
-import threading
-
-
+# ── Timeout helper ────────────────────────────────────────────────────────────
 class TimeoutError(Exception):
     pass
 
 
 def with_timeout(seconds=55):
-    """Decorator to add timeout to route handlers - Windows compatible"""
+    """Decorator to add timeout to route handlers."""
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -124,7 +123,6 @@ def with_timeout(seconds=55):
             thread.join(timeout=seconds)
 
             if thread.is_alive():
-                # Thread is still running, timeout occurred
                 print(f"⚠️ Request timeout after {seconds}s")
                 return jsonify({
                     "success": False,
@@ -140,24 +138,23 @@ def with_timeout(seconds=55):
     return decorator
 
 
-# ── Model load karo ───────────────────────────────────────────────────────────
+# ── Model load ────────────────────────────────────────────────────────────────
 print("🔄 Model load ho raha hai...")
-scaler     = joblib.load("model/scaler.pkl")
-X_ref      = np.load("model/reference_features.npy")
+scaler = joblib.load("model/scaler.pkl")
+X_ref = np.load("model/reference_features.npy")
 with open("model/file_names.json") as f:
     file_names = json.load(f)
 print(f"✅ Model ready! {len(file_names)} reference ayaat loaded.")
 
-# ── Compare timeout ───────────────────────────────────────────────────────────
 try:
     COMPARE_TIMEOUT_SECONDS = int(os.getenv("COMPARE_TIMEOUT_SECONDS", "300"))
 except ValueError:
     COMPARE_TIMEOUT_SECONDS = 300
 print(f"⏱️ Compare timeout set to {COMPARE_TIMEOUT_SECONDS}s")
 
-# ── STEP 1: Audio Preprocessing ────────────────────────────────────────────────
+# ── STEP 1: Audio preprocessing ───────────────────────────────────────────────
 def preprocess_audio(input_path):
-    """Preprocess audio: denoise, normalize, trim silence"""
+    """Preprocess audio: denoise, normalize, trim silence."""
     try:
         y, sr = librosa.load(input_path, sr=16000, mono=True)
 
@@ -171,7 +168,6 @@ def preprocess_audio(input_path):
 
         max_val = np.max(np.abs(y_denoised)) if y_denoised is not None and y_denoised.size > 0 else 0.0
 
-        # Never amplify near-silent/noise-floor recordings; this can make silence look like speech.
         should_normalize = (raw_rms >= 0.0045 and raw_peak >= 0.025 and max_val > 0)
         if should_normalize:
             y_normalized = y_denoised / max_val * 0.95
@@ -180,7 +176,7 @@ def preprocess_audio(input_path):
 
         y_trimmed, _ = librosa.effects.trim(y_normalized, top_db=20)
 
-        output_path = input_path.replace('.wav', '_processed.wav')
+        output_path = input_path.replace(".wav", "_processed.wav")
         sf.write(output_path, y_trimmed, 16000)
 
         return output_path
@@ -242,9 +238,9 @@ def _analyze_speech_activity(audio_path):
             "reason": "analysis_error"
         }
 
-# ── STEP 2: Transcribe Audio (OpenAI hosted Whisper API) ──────────────────────
+# ── STEP 2: Transcribe via OpenAI Whisper API ────────────────────────────────
 def transcribe_audio(audio_path, expected_text=""):
-    """Transcribe audio using OpenAI's hosted Whisper API, returning meta similar to local model."""
+    """Transcribe audio using OpenAI's hosted Whisper API."""
     try:
         prompt = "بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ " + (expected_text or "")
 
@@ -254,10 +250,9 @@ def transcribe_audio(audio_path, expected_text=""):
                 file=f,
                 language="ar",
                 prompt=prompt,
-                response_format="verbose_json"
+                response_format="verbose_json",
             )
 
-        # `result` is dict-like for verbose_json
         text = (result.get("text") or "").strip()
         segments = result.get("segments") or []
 
@@ -295,9 +290,8 @@ def transcribe_audio(audio_path, expected_text=""):
             "language_probability": 0.0,
         }
 
-
+# ── Helper functions (gates, scoring, tajweed, etc.) ─────────────────────────
 def _passes_transcription_gate(transcription_meta, correct_text=""):
-    """Reject empty or low-confidence ASR outputs that commonly come from silence/noise."""
     text = (transcription_meta or {}).get("text", "") or ""
     arabic_chars = len(re.findall(r"[\u0621-\u064A]", text))
     transcribed_words = len(text.split())
@@ -339,8 +333,12 @@ def _clamp(value, min_value=0.0, max_value=100.0):
     return float(max(min_value, min(max_value, value)))
 
 
-def _compute_confidence_multiplier(speech_stats, transcription_meta, correct_words_count=0, transcribed_words_count=0):
-    """Down-weight scores when speech/transcription confidence is weak."""
+def _compute_confidence_multiplier(
+    speech_stats,
+    transcription_meta,
+    correct_words_count=0,
+    transcribed_words_count=0,
+):
     voiced_ratio = float((speech_stats or {}).get("voiced_ratio", 0.0) or 0.0)
     rms = float((speech_stats or {}).get("rms", 0.0) or 0.0)
     no_speech_prob = float((transcription_meta or {}).get("mean_no_speech_prob", 1.0) or 1.0)
@@ -358,11 +356,11 @@ def _compute_confidence_multiplier(speech_stats, transcription_meta, correct_wor
     coverage_factor = _clamp(coverage / 0.80, 0.0, 1.0)
 
     confidence = (
-        (voiced_factor * 0.35) +
-        (rms_factor * 0.20) +
-        (logprob_factor * 0.20) +
-        (no_speech_factor * 0.15) +
-        (coverage_factor * 0.10)
+        (voiced_factor * 0.35)
+        + (rms_factor * 0.20)
+        + (logprob_factor * 0.20)
+        + (no_speech_factor * 0.15)
+        + (coverage_factor * 0.10)
     )
 
     if not _passes_transcription_gate(transcription_meta):
@@ -374,440 +372,48 @@ def _compute_confidence_multiplier(speech_stats, transcription_meta, correct_wor
 
     return _clamp(confidence, 0.0, 1.0)
 
-# ── STEP 3: Text Normalization ─────────────────────────────────────────────────
-def clean_quran_text(text):
-    """Remove Quranic annotation symbols that users don't recite"""
-    text = re.sub(r'[\u06D4-\u06ED]', '', text)
-    text = re.sub(r'\u0670', '', text)
-    text = re.sub(r'[\u0600-\u0605]', '', text)
-    text = re.sub(r'[\uFD3E\uFD3F]', '', text)
-    text = ' '.join(text.split())
-    return text.strip()
+# ... keep all your existing helpers: clean_quran_text, normalize_arabic,
+# align_words_smart, extract_phonemes, analyze_tajweed, extract_features,
+# normalize_arabic_simple, detect_tajweed_rules, download_qari,
+# get_grade, get_feedback, _normalize_mfcc, _levenshtein_distance,
+# compute_dtw_score, compute_phoneme_accuracy, verify_tajweed_timing,
+# compute_hybrid_score, and teacher feedback helpers.
 
 
-def normalize_arabic(text):
-    """Normalize Arabic text for comparison"""
-    text = re.sub(r'[\u0610-\u061A\u064B-\u065F\u0670]', '', text)
-    text = re.sub(r'[أإآا]', 'ا', text)
-    text = re.sub(r'ة', 'ه', text)
-    text = re.sub(r'ـ', '', text)
-    text = ' '.join(text.split())
-    return text.strip()
-
-# ── STEP 4: Word Alignment (Improved) ───────────────────────────────────────────
-def align_words_smart(user_words, correct_words):
-    aligned = []
-    used_user = set()
-    used_correct = set()
-
-    # First pass: exact normalized matches
-    for j, correct_w in enumerate(correct_words):
-        correct_norm = normalize_arabic(correct_w)
-        for i, user_w in enumerate(user_words):
-            if i in used_user:
-                continue
-            user_norm = normalize_arabic(user_w)
-
-            if user_norm == correct_norm:
-                aligned.append({
-                    "index": j,
-                    "correct_word": correct_w,
-                    "user_word": user_w,
-                    "status": "correct",
-                    "similarity": 1.0
-                })
-                used_user.add(i)
-                used_correct.add(j)
-                break
-
-    # Second pass: similarity-based matching
-    for j, correct_w in enumerate(correct_words):
-        if j in used_correct:
-            continue
-
-        correct_norm = normalize_arabic(correct_w)
-        best_match = None
-        best_sim = 0.4
-        best_i = None
-
-        for i, user_w in enumerate(user_words):
-            if i in used_user:
-                continue
-
-            user_norm = normalize_arabic(user_w)
-            ratio = SequenceMatcher(None, user_norm, correct_norm).ratio()
-
-            if ratio > best_sim:
-                best_sim = ratio
-                best_match = user_w
-                best_i = i
-
-        if best_match and best_sim > 0.4:
-            aligned.append({
-                "index": j,
-                "correct_word": correct_w,
-                "user_word": best_match,
-                "status": "close" if best_sim < 0.85 else "correct",
-                "similarity": round(best_sim, 2)
-            })
-            used_user.add(best_i)
-            used_correct.add(j)
-        else:
-            aligned.append({
-                "index": j,
-                "correct_word": correct_w,
-                "user_word": "",
-                "status": "missing",
-                "similarity": 0.0
-            })
-
-    # Extra user words
-    for i, user_w in enumerate(user_words):
-        if i not in used_user:
-            aligned.append({
-                "index": len(correct_words),
-                "correct_word": "",
-                "user_word": user_w,
-                "status": "extra",
-                "similarity": 0.0
-            })
-
-    return aligned
-
-# ── STEP 5: Phoneme Extraction ─────────────────────────────────────────────────
-def extract_phonemes(word):
-    phoneme_map = {
-        'ا': 'aa', 'ب': 'b', 'ت': 't', 'ث': 'th',
-        'ج': 'j', 'ح': 'H', 'خ': 'kh', 'د': 'd',
-        'ذ': 'dh', 'ر': 'r', 'ز': 'z', 'س': 's',
-        'ش': 'sh', 'ص': 'S', 'ض': 'D', 'ط': 'T',
-        'ظ': 'DH', 'ع': 'a', 'غ': 'gh', 'ف': 'f',
-        'ق': 'q', 'ك': 'k', 'ل': 'l', 'م': 'm',
-        'ن': 'n', 'ه': 'h', 'و': 'w/uu', 'ي': 'y/ii',
-        'ء': "'", 'ة': 't/h'
-    }
-    harakat_map = {
-        '\u064E': 'a', '\u064F': 'u', '\u0650': 'i',
-        '\u064B': 'an', '\u064C': 'un', '\u064D': 'in',
-        '\u0652': '', '\u0651': '*'
-    }
-    phonemes = []
-    for char in word:
-        if char in phoneme_map:
-            phonemes.append(phoneme_map[char])
-        elif char in harakat_map:
-            phonemes.append(harakat_map[char])
-    return phonemes
-
-# ── STEP 6: Tajweed Rule Analysis ──────────────────────────────────────────────
-def _unique_rules(rules):
-    seen = set()
-    unique_rules = []
-    for rule in rules:
-        rule_name = rule.get("rule", "")
-        if not rule_name or rule_name in seen:
-            continue
-        seen.add(rule_name)
-        unique_rules.append(rule)
-    return unique_rules
+# ── Health + utility routes ───────────────────────────────────────────────────
+@app.route("/", methods=["GET"])
+@app.route("/api/health", methods=["GET"])
+def health():
+    return jsonify({
+        "status": "ReciteRight backend chal raha hai ✅",
+        "model_loaded": True,
+        "reference_ayaat": len(file_names),
+        "api_version": "2.0",
+    })
 
 
-def analyze_tajweed(word, next_word="", prev_word=""):
-    rules_found = []
+@app.route("/qaris", methods=["GET"])
+def get_qaris():
+    return jsonify({
+        "qaris": [
+            {"id": "7", "name": "Mishary Rashid Alafasy"},
+            {"id": "1", "name": "AbdulBaset AbdulSamad"},
+            {"id": "5", "name": "Mahmoud Khalil Al-Hussary"},
+            {"id": "12", "name": "Saad Al-Ghamdi"},
+            {"id": "9", "name": "Abdul Rahman Al-Sudais"},
+        ]
+    })
 
-    # MADD (Elongation)
-    if re.search(r'\u064E\u0627|\u064F\u0648|\u0650\u064A', word):
-        rules_found.append({
-            "rule": "Madd Tabee'i",
-            "arabic": "مد طبيعي",
-            "color": "#1565C0",
-            "counts": 2,
-            "description": "Natural elongation - extend vowel for 2 counts",
-            "status": "present"
-        })
-    if re.search(r'[\u0627\u0648\u064A]\u0621', word) or \
-       (re.search(r'[\u0627\u0648\u064A]$', word) and next_word and next_word[0] == '\u0621'):
-        rules_found.append({
-            "rule": "Madd Muttasil" if re.search(r'[\u0627\u0648\u064A]\u0621', word) else "Madd Munfasil",
-            "arabic": "مد متصل" if re.search(r'[\u0627\u0648\u064A]\u0621', word) else "مد منفصل",
-            "color": "#0D47A1",
-            "counts": 4,
-            "description": "Extended elongation - extend for 4-5 counts",
-            "status": "present"
-        })
 
-    # GHUNNAH (Nasalization)
-    if re.search(r'[\u0646\u0645]\u0651', word):
-        rules_found.append({
-            "rule": "Ghunnah",
-            "arabic": "غنة",
-            "color": "#2E7D32",
-            "counts": 2,
-            "description": "Nasalize through nose for 2 counts",
-            "status": "present"
-        })
-
-    # QALQALAH (Echo/Bounce)
-    qalqalah_letters = '\u0642\u0637\u0628\u062C\u062D'
-    if re.search(f'[{qalqalah_letters}]\u0652', word):
-        level = "Minor"
-        rules_found.append({
-            "rule": f"Qalqalah {level}",
-            "arabic": "قلقلة",
-            "color": "#E65100",
-            "counts": 0,
-            "description": "Echo/bounce - add slight vibration to letter",
-            "status": "present"
-        })
-    elif not next_word and word and word[-1] in qalqalah_letters:
-        level = "Major"
-        rules_found.append({
-            "rule": f"Qalqalah {level}",
-            "arabic": "قلقلة",
-            "color": "#E65100",
-            "counts": 0,
-            "description": "Echo/bounce - add slight vibration to letter",
-            "status": "present"
-        })
-
-    # NOON SAKINAH & TANWIN RULES
-    has_noon_saakin = bool(re.search(r'\u0646\u0652', word))
-    has_tanwin = bool(re.search(r'[\u064B\u064C\u064D]$', word))
-
-    if (has_noon_saakin or has_tanwin) and next_word:
-        first_letter = next_word[0] if next_word else ''
-        ikhfa_letters = '\u062A\u062B\u062C\u062D\u0632\u0633\u0634\u0635\u0636\u0637\u0638\u0641\u0642\u0643'
-        idgham_with_ghunnah = '\u064A\u0646\u0645\u0648'
-        idgham_without_ghunnah = '\u0644\u0631'
-        iqlab_letter = '\u0628'
-        izhar_letters = '\u0621\u0647\u0639\u062D\u063A\u062E'
-
-        if first_letter in ikhfa_letters:
-            rules_found.append({
-                "rule": "Ikhfa",
-                "arabic": "إخفاء",
-                "color": "#6A1B9A",
-                "counts": 2,
-                "description": "Hide noon sound partially",
-                "status": "present"
-            })
-        elif first_letter in idgham_with_ghunnah:
-            rules_found.append({
-                "rule": "Idgham with Ghunnah",
-                "arabic": "إدغام بغنة",
-                "color": "#B71C1C",
-                "counts": 2,
-                "description": "Merge noon into next letter WITH nasalization",
-                "status": "present"
-            })
-        elif first_letter in idgham_without_ghunnah:
-            rules_found.append({
-                "rule": "Idgham without Ghunnah",
-                "arabic": "إدغام بلا غنة",
-                "color": "#C62828",
-                "counts": 0,
-                "description": "Merge noon into next letter WITHOUT nasalization",
-                "status": "present"
-            })
-        elif first_letter == iqlab_letter:
-            rules_found.append({
-                "rule": "Iqlab",
-                "arabic": "إقلاب",
-                "color": "#880E4F",
-                "counts": 2,
-                "description": "Convert noon sound to meem before ب",
-                "status": "present"
-            })
-        elif first_letter in izhar_letters:
-            rules_found.append({
-                "rule": "Izhar",
-                "arabic": "إظهار",
-                "color": "#00695C",
-                "counts": 0,
-                "description": "Pronounce noon clearly and distinctly",
-                "status": "present"
-            })
-
-    # MEEM SAKINAH RULES
-    has_meem_saakin = bool(re.search(r'\u0645\u0652', word))
-    if has_meem_saakin and next_word:
-        first_letter = next_word[0] if next_word else ''
-        if first_letter == '\u0645':
-            rules_found.append({
-                "rule": "Idgham Shafawi",
-                "arabic": "إدغام شفوي",
-                "color": "#AD1457",
-                "counts": 2,
-                "description": "Merge meem into next meem with ghunnah",
-                "status": "present"
-            })
-        elif first_letter == '\u0628':
-            rules_found.append({
-                "rule": "Ikhfa Shafawi",
-                "arabic": "إخفاء شفوي",
-                "color": "#7B1FA2",
-                "counts": 2,
-                "description": "Hide meem sound before ب with ghunnah",
-                "status": "present"
-            })
-        else:
-            rules_found.append({
-                "rule": "Izhar Shafawi",
-                "arabic": "إظهار شفوي",
-                "color": "#00796B",
-                "counts": 0,
-                "description": "Pronounce meem clearly before all other letters",
-                "status": "present"
-            })
-
-    # SHADDA (Emphasis)
-    if '\u0651' in word:
-        rules_found.append({
-            "rule": "Shadda",
-            "arabic": "شدة",
-            "color": "#F57F17",
-            "counts": 0,
-            "description": "Double the letter - stress and emphasis",
-            "status": "present"
-        })
-
-    # TAFKHIM (Heavy/Full-mouth pronunciation)
-    heavy_letters = '\u0635\u0636\u0637\u0638\u0642\u063A\u062E'
-    for char in word:
-        if char in heavy_letters:
-            rules_found.append({
-                "rule": "Tafkhim",
-                "arabic": "تفخيم",
-                "color": "#4E342E",
-                "counts": 0,
-                "description": "Heavy/full-mouth pronunciation required",
-                "status": "present"
-            })
-            break
-
-    return _unique_rules(rules_found)
-
-# ── Audio features extract karo ───────────────────────────────────────────────
-def extract_features(file_path):
-    y, sr = librosa.load(file_path, sr=16000, mono=True)
-    mfcc        = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=13)
-    mfcc_mean   = np.mean(mfcc, axis=1)
-    mfcc_std    = np.std(mfcc, axis=1)
-    chroma      = librosa.feature.chroma_stft(y=y, sr=sr)
-    chroma_mean = np.mean(chroma, axis=1)
-    zcr         = np.mean(librosa.feature.zero_crossing_rate(y))
-    rms         = np.mean(librosa.feature.rms(y=y))
-    return np.concatenate([mfcc_mean, mfcc_std, chroma_mean, [zcr, rms]])
-
-# ── Normalize Arabic text for comparison (duplicate-safe) ─────────────────────
-def normalize_arabic_simple(text):
-    text = re.sub(r'[\u0610-\u061A\u064B-\u065F\u0670]', '', text)
-    text = re.sub(r'[أإآا]', 'ا', text)
-    text = re.sub(r'ة', 'ه', text)
-    text = re.sub(r'ـ', '', text)
-    return text.strip()
-
-def detect_tajweed_rules(word, next_word=""):
-    rules = []
-
-    if re.search(r'[\u064E]\u0627|[\u064F]\u0648|[\u0650]\u064A|\u0653|\u0649$', word):
-        rules.append({
-            "rule": "Madd",
-            "color": "#1565C0",
-            "description": "Elongate this vowel for 2-6 counts"
-        })
-
-    if re.search(r'[\u0646\u0645]\u0651', word):
-        rules.append({
-            "rule": "Ghunnah",
-            "color": "#2E7D32",
-            "description": "Nasalize through nose for 2 counts"
-        })
-
-    if re.search(r'[\u0642\u0637\u0628\u062C\u062D][\u0652]', word) or \
-       re.search(r'[\u0642\u0637\u0628\u062C\u062D]$', word):
-        rules.append({
-            "rule": "Qalqalah",
-            "color": "#E65100",
-            "description": "Add slight bounce/echo to this letter"
-        })
-
-    ikhfa_letters = 'تثجدذزسشصضطظفقك'
-    if re.search(r'\u0646\u0652$|[\u064B\u064C\u064D]$', word) and next_word:
-        if len(next_word) > 0 and next_word[0] in ikhfa_letters:
-            rules.append({
-                "rule": "Ikhfa",
-                "color": "#6A1B9A",
-                "description": "Partially hide the noon sound"
-            })
-
-    idgham_letters = 'ينملو'
-    if re.search(r'\u0646\u0652$|[\u064B\u064C\u064D]$', word) and next_word:
-        if len(next_word) > 0 and next_word[0] in idgham_letters:
-            rules.append({
-                "rule": "Idgham",
-                "color": "#B71C1C",
-                "description": "Merge noon into next letter"
-            })
-
-    if re.search(r'\u0646\u0652$|[\u064B\u064C\u064D]$', word) and next_word:
-        if len(next_word) > 0 and next_word[0] == 'ب':
-            rules.append({
-                "rule": "Iqlab",
-                "color": "#880E4F",
-                "description": "Convert noon to meem sound"
-            })
-
-    izhar_letters = 'ءهعحغخ'
-    if re.search(r'\u0646\u0652$|[\u064B\u064C\u064D]$', word) and next_word:
-        if len(next_word) > 0 and next_word[0] in izhar_letters:
-            rules.append({
-                "rule": "Izhar",
-                "color": "#00695C",
-                "description": "Pronounce noon clearly"
-            })
-
-    if '\u0651' in word:
-        rules.append({
-            "rule": "Shadda",
-            "color": "#F57F17",
-            "description": "Double this letter with emphasis"
-        })
-
-    if '\u0652' in word and not any(r["rule"] == "Qalqalah" for r in rules):
-        rules.append({
-            "rule": "Sukoon",
-            "color": "#37474F",
-            "description": "Stop vowel sound completely"
-        })
-
-    return rules
-
-# ── Qari audio download karo ──────────────────────────────────────────────────
-def download_qari(surah, ayah):
-    s   = str(surah).zfill(3)
-    a   = str(ayah).zfill(3)
-    cache_key = f"{surah}:{ayah}"
+@app.route("/api/qari-url", methods=["GET"])
+def qari_url():
+    surah = request.args.get("surah", "1")
+    ayah = request.args.get("ayah", "1")
+    s = str(surah).zfill(3)
+    a = str(ayah).zfill(3)
     url = f"https://verses.quran.com/Alafasy/mp3/{s}{a}.mp3"
+    return jsonify({"url": url})
 
-    if cache_key in qari_cache and os.path.exists(qari_cache[cache_key]):
-        return qari_cache[cache_key], url
-
-    headers = {'User-Agent': 'Mozilla/5.0'}
-    try:
-        r = requests.get(url, timeout=15, headers=headers)
-        if r.status_code == 200 and len(r.content) > 1000:
-            os.makedirs(QARI_CACHE_DIR, exist_ok=True)
-            save_path = os.path.join(QARI_CACHE_DIR, f"qari_{surah}_{ayah}.mp3")
-
-            with open(save_path, "wb") as tmp:
-                tmp.write(r.content)
-
-            qari_cache[cache_key] = save_path
-            return save_path, url
-    except:
-        pass
-    return None, url
 
 @app.route("/api/prefetch-qari", methods=["GET"])
 def prefetch_qari():
@@ -818,242 +424,27 @@ def prefetch_qari():
         return jsonify({"success": True, "cached": True, "url": url})
     return jsonify({"success": False, "url": url})
 
-def get_grade(score):
-    if score >= 85: return "Excellent ✨"
-    if score >= 70: return "Very Good ✓"
-    if score >= 55: return "Good 👍"
-    if score >= 40: return "Satisfactory 📚"
-    return "Needs Work 📚"
 
-def get_feedback(score):
-    if score >= 85:
-        return "Mashallah! Excellent recitation! 🌟"
-    elif score >= 70:
-        return "Very good! Keep practicing to perfect it. 👍"
-    elif score >= 55:
-        return "Good effort! Focus on the highlighted words. 📖"
-    elif score >= 40:
-        return "Keep practicing! Listen to the Qari first. 🎧"
-    elif score >= 25:
-        return "Try again — listen carefully then repeat. 🔁"
-    else:
-        return "Start by listening to the Qari slowly. 🎙"
+# ── Your main scoring routes go here ─────────────────────────────────────────
+# Paste your existing /api/compare and /api/transcribe implementations here.
+# They should call:
+# - preprocess_audio(...)
+# - _analyze_speech_activity(...)
+# - transcribe_audio(...)
+# - compute_dtw_score(...)
+# - compute_phoneme_accuracy(...)
+# - verify_tajweed_timing(...)
+# - compute_hybrid_score(...)
+# etc.
 
-def _normalize_mfcc(mfcc):
-    if mfcc is None or mfcc.size == 0:
-        return mfcc
-    mean = np.mean(mfcc, axis=1, keepdims=True)
-    std = np.std(mfcc, axis=1, keepdims=True) + 1e-8
-    return (mfcc - mean) / std
 
-def _levenshtein_distance(seq1, seq2):
-    if seq1 == seq2:
-        return 0
-    if len(seq1) == 0:
-        return len(seq2)
-    if len(seq2) == 0:
-        return len(seq1)
-
-    prev = list(range(len(seq2) + 1))
-    for i, c1 in enumerate(seq1, start=1):
-        curr = [i]
-        for j, c2 in enumerate(seq2, start=1):
-            ins = curr[j - 1] + 1
-            delete = prev[j] + 1
-            subst = prev[j - 1] + (0 if c1 == c2 else 1)
-            curr.append(min(ins, delete, subst))
-        prev = curr
-    return prev[-1]
-
-# ── HYBRID SCORING SYSTEM ──────────────────────────────────────────────────
-def compute_dtw_score(user_mfcc, qari_mfcc):
-    try:
-        if user_mfcc is None or qari_mfcc is None:
-            return 0.0
-        if user_mfcc.size == 0 or qari_mfcc.size == 0:
-            return 0.0
-
-        user_norm = _normalize_mfcc(user_mfcc)
-        qari_norm = _normalize_mfcc(qari_mfcc)
-
-        max_frames = 150
-        if user_norm.shape[1] > max_frames:
-            user_norm = user_norm[:, ::max(1, user_norm.shape[1]//max_frames)]
-        if qari_norm.shape[1] > max_frames:
-            qari_norm = qari_norm[:, ::max(1, qari_norm.shape[1]//max_frames)]
-
-        local_cost = cosine_distances(user_norm.T, qari_norm.T)
-        D, wp = librosa.sequence.dtw(C=local_cost, step_sizes_sigma=np.array([[1, 1], [0, 1], [1, 0]]))
-
-        path_len = max(1, len(wp))
-        avg_path_cost = float(D[-1, -1]) / path_len
-
-        duration_ratio = min(user_mfcc.shape[1], qari_mfcc.shape[1]) / max(1, max(user_mfcc.shape[1], qari_mfcc.shape[1]))
-        duration_factor = 0.95 + (0.05 * duration_ratio)
-
-        dtw_similarity = 100.0 * np.exp(-0.8 * avg_path_cost)
-        dtw_similarity *= duration_factor
-        dtw_score = _clamp(dtw_similarity)
-
-        print(
-            f"  🎯 DTW AvgPathCost: {avg_path_cost:.4f}, PathLen: {path_len}, "
-            f"DurationFactor: {duration_factor:.3f}, Score: {dtw_score:.1f}"
-        )
-        return dtw_score
-    except Exception as e:
-        print(f"⚠️ DTW computation error: {e}")
-        return 35.0
-
-def compute_phoneme_accuracy(user_words, correct_words, aligned_items):
-    if not correct_words or len(correct_words) == 0:
-        return 0.0
-
-    matched_weight = 0.0
-    total_phonemes = 0.0
-
-    for item in aligned_items:
-        if not item["correct_word"]:
-            continue
-
-        correct_word = item["correct_word"]
-        user_word = item["user_word"]
-        status = item["status"]
-
-        correct_phon = extract_phonemes(correct_word)
-        phon_count = max(1, len(correct_phon))
-        total_phonemes += phon_count
-
-        if status == "missing" or not user_word:
-            continue
-
-        user_phon = extract_phonemes(user_word)
-        if not user_phon:
-            continue
-
-        edit_distance = _levenshtein_distance(correct_phon, user_phon)
-        norm_len = max(len(correct_phon), len(user_phon), 1)
-        phoneme_sim = max(0.0, 1.0 - (edit_distance / norm_len))
-
-        lexical_sim = float(item.get("similarity", 0.0))
-        if status == "correct":
-            lexical_sim = max(lexical_sim, 0.98)
-
-        combined_sim = (phoneme_sim * 0.70) + (lexical_sim * 0.30)
-        matched_weight += (combined_sim * phon_count)
-
-    if total_phonemes == 0:
-        return 0.0
-
-    phoneme_accuracy = _clamp((matched_weight / total_phonemes) * 100)
-    print(f"  📞 Phoneme Accuracy: weighted {matched_weight:.1f}/{total_phonemes:.1f} = {phoneme_accuracy:.1f}%")
-    return float(phoneme_accuracy)
-
-def verify_tajweed_timing(correct_text, user_audio_path, qari_audio_path):
-    try:
-        if not os.path.exists(user_audio_path) or not os.path.exists(qari_audio_path):
-            return 50.0
-
-        correct_words = correct_text.split()
-
-        user_y, user_sr = librosa.load(user_audio_path, sr=16000, mono=True)
-        qari_y, qari_sr = librosa.load(qari_audio_path, sr=16000, mono=True)
-
-        user_duration = len(user_y) / user_sr
-        qari_duration = len(qari_y) / qari_sr
-
-        tajweed_checks = 0
-        tajweed_correct = 0
-
-        for idx, word in enumerate(correct_words):
-            next_word = correct_words[idx+1] if idx+1 < len(correct_words) else ""
-            rules = analyze_tajweed(word, next_word)
-
-            for rule in rules:
-                rule_name = rule.get("rule", "")
-                expected_counts = rule.get("counts", 0)
-
-                if expected_counts == 0:
-                    tajweed_checks += 1
-                    tajweed_correct += 1
-                elif rule_name in ["Ghunnah", "Madd Tabee'i"]:
-                    tajweed_checks += 1
-                    duration_ratio = user_duration / max(0.1, qari_duration)
-                    if 0.7 < duration_ratio < 1.3:
-                        tajweed_correct += 1
-                    else:
-                        print(f"    ⏱️ {rule_name}: Duration ratio {duration_ratio:.2f} (expected ~1.0)")
-
-        duration_ratio = user_duration / max(0.1, qari_duration)
-        duration_score = _clamp(np.exp(-0.6 * abs(np.log(max(0.1, duration_ratio)))) * 100.0)
-
-        if tajweed_checks > 0:
-            explicit_rules_score = (tajweed_correct / tajweed_checks) * 100.0
-        else:
-            explicit_rules_score = 60.0
-
-        tajweed_timing_score = (explicit_rules_score * 0.70) + (duration_score * 0.30)
-        tajweed_timing_score = _clamp(tajweed_timing_score)
-        print(
-            f"  ✅ Tajweed Timing: explicit={explicit_rules_score:.1f}, "
-            f"duration={duration_score:.1f} => {tajweed_timing_score:.1f}"
-        )
-        return tajweed_timing_score
-
-    except Exception as e:
-        print(f"⚠️ Tajweed timing verification error: {e}")
-        return 60.0
-
-def compute_hybrid_score(audio_quality_score, phoneme_accuracy_score, tajweed_timing_score):
-    hybrid_score = (
-        (audio_quality_score * 0.20) +
-        (phoneme_accuracy_score * 0.60) +
-        (tajweed_timing_score * 0.20)
-    )
-    return float(round(hybrid_score, 1))
-
-# (Teacher feedback helpers unchanged – omitted here for brevity if you already have them)
-# Make sure to paste your existing generate_teacher_feedback, _get_rule_correction, _get_rule_praise here.
-
-# ── Routes ────────────────────────────────────────────────────────────────────
-@app.route("/", methods=["GET"])
-@app.route("/api/health", methods=["GET"])
-def health():
-    return jsonify({
-        "status": "ReciteRight backend chal raha hai ✅",
-        "model_loaded": True,
-        "reference_ayaat": len(file_names),
-        "api_version": "2.0"
-    })
-
-@app.route("/qaris", methods=["GET"])
-def get_qaris():
-    return jsonify({"qaris": [
-        {"id": "7",  "name": "Mishary Rashid Alafasy"},
-        {"id": "1",  "name": "AbdulBaset AbdulSamad"},
-        {"id": "5",  "name": "Mahmoud Khalil Al-Hussary"},
-        {"id": "12", "name": "Saad Al-Ghamdi"},
-        {"id": "9",  "name": "Abdul Rahman Al-Sudais"},
-    ]})
-
-@app.route("/api/qari-url", methods=["GET"])
-def qari_url():
-    surah = request.args.get("surah", "1")
-    ayah  = request.args.get("ayah",  "1")
-    s = str(surah).zfill(3)
-    a = str(ayah).zfill(3)
-    url = f"https://verses.quran.com/Alafasy/mp3/{s}{a}.mp3"
-    return jsonify({"url": url})
-
-# ... keep your /api/compare and /api/transcribe routes as in your existing file,
-# but they now call transcribe_audio() which uses OpenAI's hosted Whisper.
-
-# Finally, make sure the app binds to Render's PORT:
+# ── Entry point (Render-compatible) ───────────────────────────────────────────
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", "8000"))
     print(f"🚀 API Running at http://0.0.0.0:{port}/")
     app.run(
-        host="0.0.0.0",
-        port=port,
+        host="0.0.0.0",  # required so Render's health check can see the service [web:6]
+        port=port,       # use the PORT env var that Render injects [web:27]
         debug=False,
         use_reloader=False,
         threaded=True,
