@@ -3,7 +3,7 @@ import sys
 import io
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
-from flask import Flask, request, jsonify, Response
+from flask import Flask, request, jsonify, Response, copy_current_request_context
 import signal
 from functools import wraps
 from flask_cors import CORS
@@ -15,7 +15,6 @@ from sklearn.metrics.pairwise import cosine_similarity, cosine_distances
 import joblib
 import requests
 import tempfile
-import os
 import time
 import json
 import warnings
@@ -31,7 +30,14 @@ except:
     nr = None
 warnings.filterwarnings('ignore')
 
-from flask import copy_current_request_context
+from openai import OpenAI
+import os
+
+# ── OpenAI client with API key check ───────────────────────────────────────────
+api_key = os.getenv("OPENAI_API_KEY")
+if not api_key:
+    raise RuntimeError("OPENAI_API_KEY is not set in the environment")
+client = OpenAI(api_key=api_key)
 
 app = Flask(__name__)
 CORS(app)
@@ -95,8 +101,10 @@ _start_qari_cache_cleanup_thread()
 from threading import Timer
 import threading
 
+
 class TimeoutError(Exception):
     pass
+
 
 def with_timeout(seconds=55):
     """Decorator to add timeout to route handlers - Windows compatible"""
@@ -142,8 +150,7 @@ with open("model/file_names.json") as f:
     file_names = json.load(f)
 print(f"✅ Model ready! {len(file_names)} reference ayaat loaded.")
 
-# ── Load OpenAI Whisper model for transcription ───────────────────────────────
-# Use a smaller default on CPU to keep /api/compare response times practical.
+# ── Load OpenAI Whisper model for transcription (local whisper lib) ───────────
 DEFAULT_WHISPER_MODEL = "large-v3-turbo" if torch.cuda.is_available() else "small"
 WHISPER_MODEL_NAME = os.getenv("WHISPER_MODEL_NAME", DEFAULT_WHISPER_MODEL)
 WHISPER_CACHE_DIR = r"F:\.cache\whisper"
@@ -164,7 +171,6 @@ try:
         download_root=WHISPER_CACHE_DIR
     )
 except RuntimeError as e:
-    # large-v3-turbo can exceed available RAM on CPU; provide a direct fix hint.
     raise RuntimeError(
         "Failed to initialize Whisper model 'large-v3-turbo'. "
         "If running on CPU, ensure enough free RAM/pagefile and avoid Flask reloader double-start. "
@@ -259,9 +265,9 @@ def _analyze_speech_activity(audio_path):
             "reason": "analysis_error"
         }
 
-# ── STEP 2: Transcribe Audio ───────────────────────────────────────────────────
+# ── STEP 2: Transcribe Audio (local whisper) ───────────────────────────────────
 def transcribe_audio(audio_path, expected_text=""):
-    """Transcribe audio using OpenAI Whisper with optimizations for speed."""
+    """Transcribe audio using local Whisper with optimizations for speed."""
     try:
         quran_prompt = "بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ " + (expected_text or "")
         result = whisper_model.transcribe(
@@ -275,8 +281,8 @@ def transcribe_audio(audio_path, expected_text=""):
             logprob_threshold=-1.5,
             word_timestamps=True,
             initial_prompt=quran_prompt,
-            beam_size=1,  # ⚡ Reduced from 3 for ~40% speed improvement
-            best_of=1     # ⚡ Reduced from 3
+            beam_size=1,  # speed
+            best_of=1
         )
         segments = result.get("segments", []) or []
         text = (result.get("text", "") or "").strip()
@@ -339,7 +345,6 @@ def _passes_transcription_gate(transcription_meta, correct_text=""):
     if lang_prob < 0.15 and no_speech_prob > 0.85:
         return False
 
-    # If expected text is known, reject implausibly short hallucinated transcripts.
     if expected_words >= 3:
         word_coverage = transcribed_words / float(expected_words)
         if word_coverage < 0.30:
@@ -350,6 +355,10 @@ def _passes_transcription_gate(transcription_meta, correct_text=""):
             return False
 
     return True
+
+
+def _clamp(value, min_value=0.0, max_value=100.0):
+    return float(max(min_value, min(max_value, value)))
 
 
 def _compute_confidence_multiplier(speech_stats, transcription_meta, correct_words_count=0, transcribed_words_count=0):
@@ -383,7 +392,6 @@ def _compute_confidence_multiplier(speech_stats, transcription_meta, correct_wor
     elif voiced_ratio < 0.04:
         confidence = min(confidence, 0.08)
     else:
-        # Boost confidence significantly so valid recitations aren't heavily penalized
         confidence = max(0.9, confidence * 1.3)
 
     return _clamp(confidence, 0.0, 1.0)
@@ -391,18 +399,13 @@ def _compute_confidence_multiplier(speech_stats, transcription_meta, correct_wor
 # ── STEP 3: Text Normalization ─────────────────────────────────────────────────
 def clean_quran_text(text):
     """Remove Quranic annotation symbols that users don't recite"""
-    # Remove Quranic pause marks and special symbols
-    # ۛ (U+06DB), ۜ, ۞, ۩, etc.
     text = re.sub(r'[\u06D4-\u06ED]', '', text)
-    # Remove Arabic letter superscript alef standalone
     text = re.sub(r'\u0670', '', text)
-    # Remove sajda marks
     text = re.sub(r'[\u0600-\u0605]', '', text)
-    # Remove other Quranic marks
     text = re.sub(r'[\uFD3E\uFD3F]', '', text)
-    # Clean extra spaces
     text = ' '.join(text.split())
     return text.strip()
+
 
 def normalize_arabic(text):
     """Normalize Arabic text for comparison"""
@@ -519,6 +522,18 @@ def extract_phonemes(word):
     return phonemes
 
 # ── STEP 6: Tajweed Rule Analysis ──────────────────────────────────────────────
+def _unique_rules(rules):
+    seen = set()
+    unique_rules = []
+    for rule in rules:
+        rule_name = rule.get("rule", "")
+        if not rule_name or rule_name in seen:
+            continue
+        seen.add(rule_name)
+        unique_rules.append(rule)
+    return unique_rules
+
+
 def analyze_tajweed(word, next_word="", prev_word=""):
     rules_found = []
 
@@ -556,15 +571,24 @@ def analyze_tajweed(word, next_word="", prev_word=""):
 
     # QALQALAH (Echo/Bounce)
     qalqalah_letters = '\u0642\u0637\u0628\u062C\u062D'
-    if re.search(f'[{qalqalah_letters}]\u0652', word) or \
-       (word and word[-1] in qalqalah_letters):
-        level = "Major" if (word and word[-1] in qalqalah_letters) else "Minor"
+    if re.search(f'[{qalqalah_letters}]\u0652', word):
+        level = "Minor"
         rules_found.append({
             "rule": f"Qalqalah {level}",
             "arabic": "قلقلة",
             "color": "#E65100",
             "counts": 0,
-            "description": f"Echo/bounce - add slight vibration to letter",
+            "description": "Echo/bounce - add slight vibration to letter",
+            "status": "present"
+        })
+    elif not next_word and word and word[-1] in qalqalah_letters:
+        level = "Major"
+        rules_found.append({
+            "rule": f"Qalqalah {level}",
+            "arabic": "قلقلة",
+            "color": "#E65100",
+            "counts": 0,
+            "description": "Echo/bounce - add slight vibration to letter",
             "status": "present"
         })
 
@@ -683,7 +707,7 @@ def analyze_tajweed(word, next_word="", prev_word=""):
             })
             break
 
-    return rules_found
+    return _unique_rules(rules_found)
 
 # ── Audio features extract karo ───────────────────────────────────────────────
 def extract_features(file_path):
@@ -705,7 +729,6 @@ def normalize_arabic_simple(text):
     text = re.sub(r'ـ', '', text)
     return text.strip()
 
-# ── Detect Tajweed rules per word (simple version) ────────────────────────────
 def detect_tajweed_rules(word, next_word=""):
     rules = []
 
@@ -724,7 +747,7 @@ def detect_tajweed_rules(word, next_word=""):
         })
 
     if re.search(r'[\u0642\u0637\u0628\u062C\u062D][\u0652]', word) or \
-       re.search(r'[\u0642\u0637\u0628\u062C\u062H]$', word):
+       re.search(r'[\u0642\u0637\u0628\u062C\u062D]$', word):
         rules.append({
             "rule": "Qalqalah",
             "color": "#E65100",
@@ -838,22 +861,14 @@ def get_feedback(score):
     else:
         return "Start by listening to the Qari slowly. 🎙"
 
-
-def _clamp(value, min_value=0.0, max_value=100.0):
-    return float(max(min_value, min(max_value, value)))
-
-
 def _normalize_mfcc(mfcc):
-    """Cepstral mean/variance normalize MFCCs for more stable DTW distances."""
     if mfcc is None or mfcc.size == 0:
         return mfcc
     mean = np.mean(mfcc, axis=1, keepdims=True)
     std = np.std(mfcc, axis=1, keepdims=True) + 1e-8
     return (mfcc - mean) / std
 
-
 def _levenshtein_distance(seq1, seq2):
-    """Simple Levenshtein distance for phoneme sequences."""
     if seq1 == seq2:
         return 0
     if len(seq1) == 0:
@@ -873,17 +888,7 @@ def _levenshtein_distance(seq1, seq2):
     return prev[-1]
 
 # ── HYBRID SCORING SYSTEM ──────────────────────────────────────────────────
-# Component 1: Audio Quality (20%) - MFCC Cosine Similarity
-# Component 2: Phoneme Accuracy (60%) - DTW-based comparison
-# Component 3: Tajweed Timing (20%) - Rule verification
-
 def compute_dtw_score(user_mfcc, qari_mfcc):
-    """
-    Compute DTW (Dynamic Time Warping) cost between user and Qari audio.
-    DTW is tempo-invariant: reciting faster/slower won't penalize wrongly.
-
-    Returns normalized score (0-100)
-    """
     try:
         if user_mfcc is None or qari_mfcc is None:
             return 0.0
@@ -893,8 +898,7 @@ def compute_dtw_score(user_mfcc, qari_mfcc):
         user_norm = _normalize_mfcc(user_mfcc)
         qari_norm = _normalize_mfcc(qari_mfcc)
 
-        # ⚡ OPTIMIZATION: More aggressive downsampling for faster DTW
-        max_frames = 150  # ⚡ Reduced from 300 (~2x speedup, negligible quality loss)
+        max_frames = 150
         if user_norm.shape[1] > max_frames:
             user_norm = user_norm[:, ::max(1, user_norm.shape[1]//max_frames)]
         if qari_norm.shape[1] > max_frames:
@@ -906,11 +910,9 @@ def compute_dtw_score(user_mfcc, qari_mfcc):
         path_len = max(1, len(wp))
         avg_path_cost = float(D[-1, -1]) / path_len
 
-        # Penalize extreme duration mismatch, but keep DTW mostly tempo-invariant.
         duration_ratio = min(user_mfcc.shape[1], qari_mfcc.shape[1]) / max(1, max(user_mfcc.shape[1], qari_mfcc.shape[1]))
         duration_factor = 0.95 + (0.05 * duration_ratio)
 
-        # Exponential mapping gives better spread than a flat linear rule.
         dtw_similarity = 100.0 * np.exp(-0.8 * avg_path_cost)
         dtw_similarity *= duration_factor
         dtw_score = _clamp(dtw_similarity)
@@ -925,12 +927,6 @@ def compute_dtw_score(user_mfcc, qari_mfcc):
         return 35.0
 
 def compute_phoneme_accuracy(user_words, correct_words, aligned_items):
-    """
-    Compute phoneme-level accuracy using aligned word comparison.
-    Considers phoneme matches and near-matches.
-
-    Returns score (0-100)
-    """
     if not correct_words or len(correct_words) == 0:
         return 0.0
 
@@ -960,7 +956,6 @@ def compute_phoneme_accuracy(user_words, correct_words, aligned_items):
         norm_len = max(len(correct_phon), len(user_phon), 1)
         phoneme_sim = max(0.0, 1.0 - (edit_distance / norm_len))
 
-        # Blend lexical similarity from alignment with phoneme edit similarity.
         lexical_sim = float(item.get("similarity", 0.0))
         if status == "correct":
             lexical_sim = max(lexical_sim, 0.98)
@@ -976,24 +971,12 @@ def compute_phoneme_accuracy(user_words, correct_words, aligned_items):
     return float(phoneme_accuracy)
 
 def verify_tajweed_timing(correct_text, user_audio_path, qari_audio_path):
-    """
-    Verify that Tajweed rules are applied with correct timing.
-
-    Examples:
-    - Ghunnah should last ~2 counts
-    - Madd should last 2-5 counts
-    - Qalqalah should have bounce
-
-    Returns score (0-100) based on how many rules are correctly applied
-    """
     try:
         if not os.path.exists(user_audio_path) or not os.path.exists(qari_audio_path):
-            return 50.0  # Default if can't verify
+            return 50.0
 
         correct_words = correct_text.split()
 
-        # ⚡ OPTIMIZATION: Skip expensive rhythm/envelope resampling
-        # Load audio durations
         user_y, user_sr = librosa.load(user_audio_path, sr=16000, mono=True)
         qari_y, qari_sr = librosa.load(qari_audio_path, sr=16000, mono=True)
 
@@ -1012,24 +995,16 @@ def verify_tajweed_timing(correct_text, user_audio_path, qari_audio_path):
                 expected_counts = rule.get("counts", 0)
 
                 if expected_counts == 0:
-                    # Rules like Qalqalah, Shadda don't have timing requirements
                     tajweed_checks += 1
                     tajweed_correct += 1
                 elif rule_name in ["Ghunnah", "Madd Tabee'i"]:
-                    # Verify duration is approximately correct
-                    # Expected: 2 counts = ~0.5 seconds at normal speaking rate
-                    # Allow ±30% tolerance
-
                     tajweed_checks += 1
-
-                    # Simple heuristic: if user duration is 0.8-1.2× Qari, mark as correct
                     duration_ratio = user_duration / max(0.1, qari_duration)
-                    if 0.7 < duration_ratio < 1.3:  # Allow 30% tempo variance
+                    if 0.7 < duration_ratio < 1.3:
                         tajweed_correct += 1
                     else:
                         print(f"    ⏱️ {rule_name}: Duration ratio {duration_ratio:.2f} (expected ~1.0)")
 
-        # ⚡ OPTIMIZATION: Skip expensive envelope resampling, use simple duration score instead
         duration_ratio = user_duration / max(0.1, qari_duration)
         duration_score = _clamp(np.exp(-0.6 * abs(np.log(max(0.1, duration_ratio)))) * 100.0)
 
@@ -1038,7 +1013,6 @@ def verify_tajweed_timing(correct_text, user_audio_path, qari_audio_path):
         else:
             explicit_rules_score = 60.0
 
-        # ⚡ Simplified weighting (removed expensive envelope calculation)
         tajweed_timing_score = (explicit_rules_score * 0.70) + (duration_score * 0.30)
         tajweed_timing_score = _clamp(tajweed_timing_score)
         print(
@@ -1049,25 +1023,17 @@ def verify_tajweed_timing(correct_text, user_audio_path, qari_audio_path):
 
     except Exception as e:
         print(f"⚠️ Tajweed timing verification error: {e}")
-        return 60.0  # Default neutral score
+        return 60.0
 
 def compute_hybrid_score(audio_quality_score, phoneme_accuracy_score, tajweed_timing_score):
-    """
-    Combine three components with weights:
-    - Audio Quality: 20% (overall voice, timbre, energy)
-    - Phoneme Accuracy: 60% (what was actually said)
-    - Tajweed Timing: 20% (correct rule application)
-    """
     hybrid_score = (
         (audio_quality_score * 0.20) +
         (phoneme_accuracy_score * 0.60) +
         (tajweed_timing_score * 0.20)
     )
-
     return float(round(hybrid_score, 1))
 
 def _get_rule_correction(rule_name, word_arabic, user_said):
-    """Get specific correction for each Tajweed rule"""
     corrections = {
         "Madd Tabee'i": {
             "message": f"'{word_arabic}' — Madd (Elongation) was too short or missing.",
@@ -1183,7 +1149,6 @@ def _get_rule_correction(rule_name, word_arabic, user_said):
     })
 
 def _get_rule_praise(rule_name, word_arabic):
-    """Positive feedback for correctly applied rules"""
     praise = {
         "Madd Tabee'i":    f"✓ '{word_arabic}' — Good Madd elongation (2 counts)",
         "Madd Muttasil":   f"✓ '{word_arabic}' — Excellent Connected Madd (4-5 counts)",
@@ -1198,10 +1163,6 @@ def _get_rule_praise(rule_name, word_arabic):
     return praise.get(rule_name, f"✓ '{word_arabic}' — Correct")
 
 def generate_teacher_feedback(word_results, correct_text, transcribed_text, final_score):
-    """
-    Generate specific Tajweed teacher-like feedback.
-    Like a real Ustadh correcting a student.
-    """
     feedback_items = []
 
     correct_words = correct_text.split()
@@ -1210,12 +1171,13 @@ def generate_teacher_feedback(word_results, correct_text, transcribed_text, fina
         word_arabic = word.get("word", "")
         status      = word.get("status", "")
         transcribed = word.get("transcribed", "")
-        tajweed_rules = word.get("tajweed_rules", [])
+        tajweed_rules = _unique_rules(word.get("tajweed_rules", []))
 
         if status == "correct":
-            # Still check tajweed rules on correct words
-            for rule in tajweed_rules:
+            for rule in tajweed_rules[:2]:
                 rule_name = rule.get("rule", "")
+                if not rule_name:
+                    continue
                 feedback_items.append({
                     "word": word_arabic,
                     "type": "correct",
@@ -1226,21 +1188,42 @@ def generate_teacher_feedback(word_results, correct_text, transcribed_text, fina
                 })
 
         elif status in ["wrong", "close"]:
-            # Wrong pronunciation
-            for rule in tajweed_rules:
-                rule_name = rule.get("rule", "")
+            if tajweed_rules:
+                primary_rule = tajweed_rules[0]
+                rule_name = primary_rule.get("rule", "")
                 tip = _get_rule_correction(rule_name, word_arabic, transcribed)
                 if tip:
+                    if status == "close":
+                        close_message = tip["message"].replace("was too short or missing", "may need a little more control")
+                        close_fix = tip["how_to_fix"].replace("must", "should").replace("always", "usually")
+                    else:
+                        close_message = tip["message"]
+                        close_fix = tip["how_to_fix"]
+
                     feedback_items.append({
                         "word": word_arabic,
                         "type": "error",
                         "rule": rule_name,
-                        "message": tip["message"],
-                        "how_to_fix": tip["how_to_fix"],
+                        "message": close_message,
+                        "how_to_fix": close_fix,
                         "duration": tip.get("duration", ""),
                         "severity": "error",
-                        "color": rule.get("color", "#B71C1C")
+                        "color": primary_rule.get("color", "#B71C1C")
                     })
+
+                if len(tajweed_rules) > 1:
+                    extra_rules = ", ".join(r.get("rule", "") for r in tajweed_rules[1:3] if r.get("rule", ""))
+                    if extra_rules:
+                        feedback_items.append({
+                            "word": word_arabic,
+                            "type": "error",
+                            "rule": "",
+                            "message": f"Also review: {extra_rules}.",
+                            "how_to_fix": "Focus on one rule at a time, then add the next layer of Tajweed.",
+                            "duration": "",
+                            "severity": "error",
+                            "color": "#F57C00"
+                        })
 
         elif status == "missing":
             feedback_items.append({
@@ -1254,7 +1237,6 @@ def generate_teacher_feedback(word_results, correct_text, transcribed_text, fina
                 "color": "#B71C1C"
             })
 
-    # Generate overall summary
     errors   = [f for f in feedback_items if f["type"] == "error"]
     missing  = [f for f in feedback_items if f["type"] == "missing"]
 
@@ -1323,11 +1305,10 @@ def compare():
     user_tmp.close()
     request.files["audio"].save(user_tmp.name)
 
-    # ⚡ CHECK AUDIO LENGTH BEFORE PROCESSING
     try:
         y_check, sr_check = librosa.load(user_tmp.name, sr=16000, mono=True)
         audio_duration = len(y_check) / sr_check
-        if audio_duration > 120:  # Reject audio longer than 2 minutes
+        if audio_duration > 120:
             return jsonify({
                 "success": False,
                 "error": f"Audio too long ({audio_duration:.1f}s). Maximum is 120 seconds.",
@@ -1338,14 +1319,12 @@ def compare():
 
     processed_path = None
     qari_path = None
-    
-    # ⚡ CACHE: Store audio data to avoid multiple reloads
+
     audio_cache = {}
 
     try:
         print(f"\n📝 === COMPARISON REQUEST ===")
         print(f"📂 Surah: {surah}, Ayah: {ayah}, Duration: {audio_duration:.1f}s")
-        # Gate silence from raw input before any preprocessing can alter energy profile.
         raw_speech_stats = _analyze_speech_activity(user_tmp.name)
         print(f"🗣️ Raw speech activity: {raw_speech_stats}")
         if not raw_speech_stats.get("speech_detected", False):
@@ -1379,7 +1358,7 @@ def compare():
         transcription_meta = transcribe_audio(processed_path, expected_text=correct_text)
         t_transcribe = time.time() - start
         print(f"⏱️ Transcription: {t_transcribe:.1f}s")
-        
+
         transcribed_text = (transcription_meta or {}).get("text", "").strip()
         if not _passes_transcription_gate(transcription_meta, correct_text=correct_text):
             return jsonify({
@@ -1460,7 +1439,6 @@ def compare():
         close_count = sum(1 for w in word_results if w["status"] == "close")
         missing_count = sum(1 for w in word_results if w["status"] == "missing")
         extra_count = sum(1 for w in word_results if w["status"] == "extra")
-
         total_words = len([w for w in word_results if w["word"]])
 
         print(f"\n📈 SCORING BREAKDOWN:")
@@ -1484,10 +1462,8 @@ def compare():
 
         qari_path, qari_url = download_qari(surah, ayah)
 
-        # ── HYBRID SCORING SYSTEM ───────────────────────────────────────
         print(f"\n🎯 === HYBRID SCORING (3-Component) ===")
 
-        # Component 1: Audio Quality Score (20%)
         audio_quality_score = 20.0
         dtw_score = 0.0
         direct_phoneme_score = 0.0
@@ -1496,8 +1472,6 @@ def compare():
             "fallbacks": []
         }
         if qari_path:
-            # Skip the pre-trained scaler entirely
-            # Use normalized MFCC cosine similarity directly
             try:
                 user_y_raw, _ = librosa.load(processed_path, sr=16000)
                 qari_y_raw, _ = librosa.load(qari_path, sr=16000)
@@ -1505,7 +1479,6 @@ def compare():
                 user_mfcc_raw = librosa.feature.mfcc(y=user_y_raw, sr=16000, n_mfcc=20)
                 qari_mfcc_raw = librosa.feature.mfcc(y=qari_y_raw, sr=16000, n_mfcc=20)
 
-                # CMVN normalize per recording (no pre-trained scaler needed)
                 def cmvn_normalize(mfcc):
                     mean = np.mean(mfcc, axis=1, keepdims=True)
                     std = np.std(mfcc, axis=1, keepdims=True) + 1e-8
@@ -1535,7 +1508,6 @@ def compare():
             audio_quality_score = 20.0
             scoring_debug["fallbacks"].append("qari_audio_missing")
 
-        # Component 2: Phoneme Accuracy Score (60%) - using DTW
         phoneme_accuracy_score = 0.0
         t_phoneme_start = time.time()
         if qari_path:
@@ -1549,17 +1521,13 @@ def compare():
                 dtw_score = compute_dtw_score(user_mfcc, qari_mfcc)
                 direct_phoneme_score = compute_phoneme_accuracy(user_words, correct_words, aligned)
 
-                # Whisper transcript score is most reliable signal
-                # Only use DTW as a small supplement
                 if whisper_score >= 60:
-                    # Strong transcription — trust it heavily
                     phoneme_accuracy_score = (
                         whisper_score * 0.70 +
                         direct_phoneme_score * 0.20 +
                         dtw_score * 0.10
                     )
                 else:
-                    # Weak transcription — lean more on audio
                     phoneme_accuracy_score = (
                         whisper_score * 0.40 +
                         direct_phoneme_score * 0.30 +
@@ -1580,7 +1548,6 @@ def compare():
             phoneme_accuracy_score = whisper_score
             scoring_debug["fallbacks"].append("phoneme_fallback_no_qari")
 
-        # Component 3: Tajweed Timing Score (20%)
         tajweed_timing_score = 20.0
         t_tajweed_start = time.time()
         if qari_path:
@@ -1594,7 +1561,6 @@ def compare():
                 tajweed_timing_score = 20.0
                 scoring_debug["fallbacks"].append("tajweed_timing_default")
 
-        # Compute final hybrid score
         confidence_multiplier = _compute_confidence_multiplier(
             speech_stats,
             transcription_meta,
@@ -1605,8 +1571,6 @@ def compare():
         raw_hybrid_score = compute_hybrid_score(audio_quality_score, phoneme_accuracy_score, tajweed_timing_score)
         final_score = round(raw_hybrid_score * confidence_multiplier, 1)
 
-        # If Whisper clearly understood the recitation well,
-        # don't let audio issues drag score below 60
         if whisper_score >= 80 and missing_count == 0:
             final_score = max(final_score, 65.0)
         elif whisper_score >= 65 and missing_count <= 1:
@@ -1614,7 +1578,7 @@ def compare():
 
         final_score = round(_clamp(final_score), 1)
 
-        mfcc_score = audio_quality_score  # Keep for backward compatibility
+        mfcc_score = audio_quality_score
 
         print(f"\n🏆 FINAL HYBRID SCORING:")
         print(f"  Audio Quality:      {audio_quality_score} × 0.20 = {audio_quality_score * 0.20:.1f}")
@@ -1820,7 +1784,7 @@ def transcribe():
         if os.path.exists(audio_tmp.name):
             os.unlink(audio_tmp.name)
 
-# ═══════════��════════════════════════════════════════════════════════════════════
+# ════════════════════════════════════════════════════════════════════════════════
 # SETUP GAMIFICATION ROUTES
 # ════════════════════════════════════════════════════════════════════════════════
 try:
@@ -1846,5 +1810,4 @@ except Exception as e:
 
 if __name__ == "__main__":
     print("🚀 API Running at http://0.0.0.0:8000/")
-    # Change whatever you have to this:
     app.run(host='0.0.0.0', port=8000, debug=True, use_reloader=False, threaded=True)
