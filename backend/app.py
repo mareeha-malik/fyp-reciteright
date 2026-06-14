@@ -948,54 +948,6 @@ def prefetch_qari():
 
 # ── USER & PROGRESS ROUTES (MATCHING FLUTTER LOGS) ──────────────────
 
-@app.route('/api/user/home-metrics', methods=['GET'])
-def get_home_metrics():
-    return jsonify({
-        "success": True,
-        "data": {
-            "points": 150,
-            "streak": 5,
-            "currentLevel": "Beginner",
-            "nextLevelProgress": 0.65
-        }
-    })
-
-@app.route('/api/user/progress', methods=['GET'])
-def get_progress():
-    return jsonify({
-        "success": True,
-        "data": {
-            "dailyProgress": [5, 8, 3, 10, 5, 7, 2],
-            "totalAyaat": 80,
-            "completedAyaat": 12
-        }
-    })
-
-@app.route('/api/memorization/summary', methods=['GET'])
-def get_mem_summary():
-    return jsonify({
-        "success": True,
-        "data": {
-            "totalSessions": 24,
-            "accuracyAverage": 88.5
-        }
-    })
-
-@app.route('/api/user/mistakes', methods=['GET'])
-def get_user_mistakes():
-    return jsonify({
-        "success": True,
-        "mistakes": [
-            {"ayah": "Bismillah", "type": "Pronunciation", "count": 1}
-        ]
-    })
-
-@app.route('/api/gamification/home-metrics', methods=['GET'])
-def get_game_metrics():
-    return jsonify({
-        "success": True,
-        "data": { "rank": 12, "badges": [] }
-    })
 # ── Example scoring route (adjust payload as needed) ─────────────────────────
 @app.route("/api/compare", methods=["POST"])
 @with_timeout(COMPARE_TIMEOUT_SECONDS)
