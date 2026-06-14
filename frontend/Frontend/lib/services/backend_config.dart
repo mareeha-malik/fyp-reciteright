@@ -1,13 +1,11 @@
 import 'package:flutter/foundation.dart';
 
 /// Shared backend host configuration.
-///
-/// You can override this at build/run time:
-/// flutter run --dart-define=BACKEND_BASE_URL=http://192.168.100.11:8000
 class BackendConfig {
   static const String baseUrl = String.fromEnvironment(
     'BACKEND_BASE_URL',
-    defaultValue: 'http://127.0.0.1:8000',
+    // CHANGE THIS LINE BELOW:
+    defaultValue: 'https://fyp-reciteright.onrender.com',
   );
 
   static String compareUrl() =>
@@ -15,10 +13,7 @@ class BackendConfig {
 
   static void debugPrintConfig() {
     if (kDebugMode) {
-      // Prints once in debug where services are constructed.
-      // Helps diagnose "Failed to load progress" due to wrong host.
       print('Backend base URL: $baseUrl');
     }
   }
 }
-
