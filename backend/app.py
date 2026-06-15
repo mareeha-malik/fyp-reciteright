@@ -1038,18 +1038,25 @@ def compare():
         correct_words_count=len(correct_words),
         transcribed_words_count=len(user_words),
     )
+       # NEW: still send a score, but mark low_confidence instead of failing
+       low_conf = not _passes_transcription_gate(asr_meta, correct_text=correct_text)
 
+       return jsonify({
+           "success": True,
+           "score": hybrid_score,
+           "dtw_score": dtw_score,
+           "phoneme_accuracy": phoneme_accuracy,
+           "tajweed_timing_score": tajweed_timing_score,
+           "grade": grade,
+           "feedback": feedback,
+           "transcribed_text": transcribed_text,
+           "low_confidence": low_conf
+       })
     # NEW: still send a score, but mark low_confidence instead of failing
     low_conf = not _passes_transcription_gate(asr_meta, correct_text=correct_text)
 
     return jsonify({
-        "success": True,
-        "score": 77.7,
-        "dtw_score": 55.0,
-        "phoneme_accuracy": 66.0,
-        "tajweed_timing_score": 44.0,
-        ...
-    })
+
 
 # ── Entry point (Render-compatible) ───────────────────────────────────────────
 if __name__ == "__main__":
