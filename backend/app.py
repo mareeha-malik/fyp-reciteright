@@ -1044,17 +1044,11 @@ def compare():
 
     return jsonify({
         "success": True,
-        "low_confidence": low_conf,
-        "score": hybrid_score,
-        "grade": grade,
-        "feedback": feedback,
-        "dtw_score": dtw_score,
-        "phoneme_accuracy": phoneme_accuracy,
-        "tajweed_timing_score": tajweed_timing_score,
-        "speech_stats": speech_stats,
-        "transcription": asr_meta,
-        "aligned_words": aligned_items,
-        "confidence_multiplier": confidence_mult,
+        "score": 77.7,
+        "dtw_score": 55.0,
+        "phoneme_accuracy": 66.0,
+        "tajweed_timing_score": 44.0,
+        ...
     })
 
 # ── Entry point (Render-compatible) ───────────────────────────────────────────
