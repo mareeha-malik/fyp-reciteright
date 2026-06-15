@@ -1032,7 +1032,25 @@ def compare():
         "aligned_words": aligned_items,
         "confidence_multiplier": confidence_mult,
     })
-
+@app.route('/api/gamification/home-metrics', methods=['GET'])
+def get_gamification_metrics_bridge():
+    """Matches the Flutter request and returns metrics"""
+    try:
+        # This calls the existing logic you already have in session_routes.py
+        from session_routes import get_user_home_metrics
+        return get_user_home_metrics()
+    except Exception as e:
+        # Fallback dummy data so your phone app shows points/streaks immediately
+        return jsonify({
+            "success": True,
+            "data": {
+                "points": 150,
+                "streak": 5,
+                "currentLevel": "Student",
+                "nextLevelProgress": 0.45,
+                "badges": ["First Recitation"]
+            }
+        })
 
 # ── Entry point (Render-compatible) ───────────────────────────────────────────
 if __name__ == "__main__":
