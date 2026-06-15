@@ -38,7 +38,7 @@ client = OpenAI(api_key=api_key)
 
 # ── Flask app ─────────────────────────────────────────────────────────────────
 app = Flask(__name__)
-setup_session_routes(app)  # <--- ADD THIS LINE
+setup_session_routes(app)
 CORS(app)
 
 # ── Qari cache setup ──────────────────────────────────────────────────────────
@@ -252,6 +252,7 @@ def transcribe_audio(audio_path, expected_text=""):
                 response_format="verbose_json",
             )
 
+        # result is usually a dict-like object in verbose_json format
         text = (result.get("text") or "").strip()
         segments = result.get("segments") or []
 
@@ -291,6 +292,7 @@ def transcribe_audio(audio_path, expected_text=""):
 
 # ── Helpers: gating, normalization, alignment, tajweed, scoring ──────────────
 def _passes_transcription_gate(transcription_meta, correct_text=""):
+    """Relaxed gate: try to pass borderline cases but still reject obvious non-speech."""
     text = (transcription_meta or {}).get("text", "") or ""
     arabic_chars = len(re.findall(r"[\u0621-\u064A]", text))
     transcribed_words = len(text.split())
@@ -303,26 +305,34 @@ def _passes_transcription_gate(transcription_meta, correct_text=""):
     expected_words = len(correct_words)
     expected_arabic_chars = len(re.findall(r"[\u0621-\u064A]", correct_text)) if correct_text else 0
 
+    # Basic sanity checks
     if arabic_chars < 2:
         return False
     if transcribed_words == 0:
         return False
     if segment_count == 0:
         return False
-    if no_speech_prob > 0.92 and avg_logprob < -1.4:
-        return False
-    if avg_logprob < -2.3:
-        return False
-    if lang_prob < 0.15 and no_speech_prob > 0.85:
+
+    # Very high no-speech + very low confidence -> reject
+    if no_speech_prob > 0.97 and avg_logprob < -1.6:  # was 0.92 / -1.4
         return False
 
+    # Extremely bad ASR -> reject
+    if avg_logprob < -2.8:  # was -2.3
+        return False
+
+    # Non-Arabic with strong no-speech -> reject
+    if lang_prob < 0.10 and no_speech_prob > 0.90:  # slightly relaxed
+        return False
+
+    # Coverage checks (relaxed)
     if expected_words >= 3:
         word_coverage = transcribed_words / float(expected_words)
-        if word_coverage < 0.30:
+        if word_coverage < 0.20:  # was 0.30
             return False
     if expected_arabic_chars >= 12:
         char_coverage = arabic_chars / float(expected_arabic_chars)
-        if char_coverage < 0.22:
+        if char_coverage < 0.15:  # was 0.22
             return False
 
     return True
@@ -948,7 +958,25 @@ def prefetch_qari():
 
 # ── USER & PROGRESS ROUTES (MATCHING FLUTTER LOGS) ──────────────────
 
-# ── Example scoring route (adjust payload as needed) ─────────────────────────
+@app.route('/api/gamification/home-metrics', methods=['GET'])
+def get_gamification_metrics_bridge():
+    """Matches the Flutter request and returns metrics"""
+    try:
+        from session_routes import get_user_home_metrics
+        return get_user_home_metrics()
+    except Exception as e:
+        return jsonify({
+            "success": True,
+            "data": {
+                "points": 150,
+                "streak": 5,
+                "currentLevel": "Student",
+                "nextLevelProgress": 0.45,
+                "badges": ["First Recitation"]
+            }
+        })
+
+# ── Example scoring route ─────────────────────────────────────────
 @app.route("/api/compare", methods=["POST"])
 @with_timeout(COMPARE_TIMEOUT_SECONDS)
 def compare():
@@ -978,14 +1006,6 @@ def compare():
 
     asr_meta = transcribe_audio(user_processed_path, expected_text=correct_text)
     print(f"🧪 ASR meta (gate): {asr_meta}")
-
-    if not _passes_transcription_gate(asr_meta, correct_text=correct_text):
-        return jsonify({
-            "success": False,
-            "reason": "low_confidence",
-            "speech_stats": speech_stats,
-            "transcription": asr_meta,
-        }), 200
 
     transcribed_text = asr_meta.get("text", "")
     correct_clean = clean_quran_text(correct_text)
@@ -1019,8 +1039,12 @@ def compare():
         transcribed_words_count=len(user_words),
     )
 
+    # NEW: still send a score, but mark low_confidence instead of failing
+    low_conf = not _passes_transcription_gate(asr_meta, correct_text=correct_text)
+
     return jsonify({
         "success": True,
+        "low_confidence": low_conf,
         "score": hybrid_score,
         "grade": grade,
         "feedback": feedback,
@@ -1032,33 +1056,14 @@ def compare():
         "aligned_words": aligned_items,
         "confidence_multiplier": confidence_mult,
     })
-@app.route('/api/gamification/home-metrics', methods=['GET'])
-def get_gamification_metrics_bridge():
-    """Matches the Flutter request and returns metrics"""
-    try:
-        # This calls the existing logic you already have in session_routes.py
-        from session_routes import get_user_home_metrics
-        return get_user_home_metrics()
-    except Exception as e:
-        # Fallback dummy data so your phone app shows points/streaks immediately
-        return jsonify({
-            "success": True,
-            "data": {
-                "points": 150,
-                "streak": 5,
-                "currentLevel": "Student",
-                "nextLevelProgress": 0.45,
-                "badges": ["First Recitation"]
-            }
-        })
 
 # ── Entry point (Render-compatible) ───────────────────────────────────────────
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", "10000"))
     print(f"🚀 API Running at http://0.0.0.0:{port}/")
     app.run(
-        host="0.0.0.0",  # required for Render / containers [web:21][web:41]
-        port=port,       # use Render's PORT env var [web:40]
+        host="0.0.0.0",
+        port=port,
         debug=False,
         use_reloader=False,
         threaded=True,
