@@ -975,8 +975,6 @@ def get_gamification_metrics_bridge():
                 "badges": ["First Recitation"]
             }
         })
-
-# ── Example scoring route ─────────────────────────────────────────
 @app.route("/api/compare", methods=["POST"])
 @with_timeout(COMPARE_TIMEOUT_SECONDS)
 def compare():
@@ -995,12 +993,14 @@ def compare():
     surah = request.form.get("surah", "1")
     ayah = request.form.get("ayah", "1")
 
+    # ---- Save & preprocess audio ----
     with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
         audio_file.save(tmp.name)
         user_raw_path = tmp.name
 
     user_processed_path = preprocess_audio(user_raw_path)
 
+    # ---- Basic speech & ASR ----
     speech_stats = _analyze_speech_activity(user_processed_path)
     print(f"🧪 Speech stats: {speech_stats}")
 
@@ -1014,6 +1014,7 @@ def compare():
 
     aligned_items = align_words_smart(user_words, correct_words)
 
+    # ---- Acoustic / phoneme features ----
     user_feat_vec = extract_features(user_processed_path)
     rec_idx = 0
     qari_feat_vec = X_ref[rec_idx]
@@ -1038,24 +1039,27 @@ def compare():
         correct_words_count=len(correct_words),
         transcribed_words_count=len(user_words),
     )
-       # NEW: still send a score, but mark low_confidence instead of failing
-       low_conf = not _passes_transcription_gate(asr_meta, correct_text=correct_text)
 
-       return jsonify({
-           "success": True,
-           "score": hybrid_score,
-           "dtw_score": dtw_score,
-           "phoneme_accuracy": phoneme_accuracy,
-           "tajweed_timing_score": tajweed_timing_score,
-           "grade": grade,
-           "feedback": feedback,
-           "transcribed_text": transcribed_text,
-           "low_confidence": low_conf
-       })
     # NEW: still send a score, but mark low_confidence instead of failing
     low_conf = not _passes_transcription_gate(asr_meta, correct_text=correct_text)
 
     return jsonify({
+        "success": True,
+        "score": hybrid_score,
+        "dtw_score": dtw_score,
+        "phoneme_accuracy": phoneme_accuracy,
+        "tajweed_timing_score": tajweed_timing_score,
+        "grade": grade,
+        "feedback": feedback,
+        "transcribed_text": transcribed_text,
+        "speech_stats": speech_stats,
+        "aligned_words": aligned_items,
+        "confidence_multiplier": confidence_mult,
+        "low_confidence": low_conf,
+    })
+    # NEW: still send a score, but mark low_confidence instead of failing
+    low_conf = not _passes_transcription_gate(asr_meta, correct_text=correct_text)
+
 
 
 # ── Entry point (Render-compatible) ───────────────────────────────────────────
